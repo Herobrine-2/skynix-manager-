@@ -7,6 +7,7 @@ const CLIENT_ID = process.env.DISCORD_CLIENT_ID;
 const CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET;
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 const REQUIRED_ROLE_ID = process.env.DISCORD_REQUIRED_ROLE_ID || '';
+const ADMIN_ROLE_ID = process.env.DISCORD_ADMIN_ROLE_ID || '';
 const PUBLIC_URL = process.env.PUBLIC_URL;
 
 if (!CLIENT_ID || !CLIENT_SECRET || !GUILD_ID || !PUBLIC_URL) {
@@ -129,7 +130,8 @@ const server = http.createServer(async (req, res) => {
         return html(200, 'Üyelik rolü bulunamadı', 'Sunucuda kuralları kabul ettikten sonra tekrar giriş yapın.');
       }
 
-      sessions.set(state, { status: 'done', result: { success: true, user: { id: userResponse.data.id, username: userResponse.data.username, avatar: userResponse.data.avatar || null } } });
+      const isAdmin = Boolean(ADMIN_ROLE_ID && memberResponse.data.roles?.includes(ADMIN_ROLE_ID));
+      sessions.set(state, { status: 'done', result: { success: true, user: { id: userResponse.data.id, username: userResponse.data.username, avatar: userResponse.data.avatar || null, isAdmin } } });
       return html(200, 'Discord bağlantısı başarılı!', 'Kimliğin doğrulandı. Skynix Manager uygulamasına dönebilirsin.', true);
     } catch (err) {
       console.error(err);
