@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skynix Manager - NextGen</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Firebase Realtime Live Server SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -45,7 +47,7 @@
             background: #0a0e17 !important;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; user-select: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; user-select: none; }
         
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: var(--bg-main); }
@@ -91,7 +93,7 @@
 
         .icon-svg { width: 16px; height: 16px; fill: currentColor; display: inline-block; vertical-align: middle; }
 
-        /* ❤️ Favori Kalp Butonu */
+        /* ♥ Favori Kalp Butonu */
         .fav-heart-btn {
             position: absolute;
             top: 8px;
@@ -540,9 +542,9 @@
         }
         .price-badge.paid { background: rgba(239, 68, 68, 0.85); }
 
-        .custom-card-body { padding: 14px; display: flex; flex-direction: column; gap: 6px; }
-        .custom-skin-title { font-size: 15px; font-weight: 800; color: var(--text-main); word-break: break-word; }
-        .custom-skin-champ { font-size: 11px; font-weight: 700; color: var(--accent-color); text-transform: uppercase; }
+        .custom-card-body { padding: 14px; display: flex; flex-direction: column; gap: 4px; }
+        .custom-skin-champ { font-size: 11px; font-weight: 800; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.5px; }
+        .custom-skin-title { font-size: 15px; font-weight: 800; color: var(--text-main); word-break: break-word; line-height: 1.25; }
 
         .three-dots-btn {
             position: absolute; top: 8px; right: 8px; z-index: 15;
@@ -1038,21 +1040,21 @@
             <!-- Discord Steps -->
             <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:28px;">
                 <div style="display:flex; align-items:center; gap:12px; background:rgba(88,101,242,0.08); border:1px solid rgba(88,101,242,0.15); border-radius:12px; padding:12px 16px;">
-                    <span style="font-size:20px; min-width:28px; text-align:center;">1️⃣</span>
+                    <span style="font-size:20px; min-width:28px; text-align:center;">1</span>
                     <div>
                         <div style="font-size:13px; font-weight:700; color:#e2e8f0;">Sunucumuza katıl</div>
                         <a id="discordJoinUrl" href="https://discord.gg/2cTNwPWTeE" target="_blank" rel="noopener noreferrer" style="display:inline-flex!important;align-items:center;justify-content:center;margin-top:8px;padding:7px 12px;width:190px;box-sizing:border-box;border-radius:8px;background:rgba(88,101,242,.18);border:1px solid rgba(88,101,242,.55);color:#aeb7ff;font-size:11px;font-weight:800;text-decoration:none;">discord.gg/2cTNwPWTeE ↗</a>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:12px; background:rgba(88,101,242,0.08); border:1px solid rgba(88,101,242,0.15); border-radius:12px; padding:12px 16px;">
-                    <span style="font-size:20px; min-width:28px; text-align:center;">2️⃣</span>
+                    <span style="font-size:20px; min-width:28px; text-align:center;">2</span>
                     <div>
                         <div style="font-size:13px; font-weight:700; color:#e2e8f0;">Üye rolünü al</div>
                         <div style="font-size:11px; color:#64748b;">Sunucu kurallarını kabul et ve rolünü al</div>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:12px; background:rgba(88,101,242,0.08); border:1px solid rgba(88,101,242,0.15); border-radius:12px; padding:12px 16px;">
-                    <span style="font-size:20px; min-width:28px; text-align:center;">3️⃣</span>
+                    <span style="font-size:20px; min-width:28px; text-align:center;">3</span>
                     <div>
                         <div style="font-size:13px; font-weight:700; color:#e2e8f0;">Discord ile giriş yap</div>
                         <div style="font-size:11px; color:#64748b;">Hesabını bağla, uygulamaya eriş</div>
@@ -1155,12 +1157,12 @@
             <!-- PENCERE 2: MOD & SKİNLER -->
             <div class="sidebar-window-box">
                 <div class="sidebar-box-header">
-                    <svg class="icon-svg icon-sm" viewBox="0 0 24 24" style="color:var(--accent-color);"><path d="M12 2L1 21h22L12 2zm0 3.8L19.3 19H4.7L12 5.8z"/></svg>
+                    <img src="lol-logo.png" style="width:18px; height:18px; filter:invert(1) brightness(0.85); opacity:0.95; object-fit:contain;" alt="LoL">
                     <span id="txt-sidebar-sec2">MOD & SKİNLER</span>
                 </div>
                 <div class="sidebar-box-body">
                     <div class="nav-item" onclick="switchTab('champions', this)">
-                        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm0 3.8L19.3 19H4.7L12 5.8z"/></svg>
+                        <img src="lol-logo.png" class="icon-svg" style="width:18px; height:18px; filter:invert(1) brightness(0.85); opacity:0.9; object-fit:contain;" alt="LoL">
                         <span id="txt-nav-champions">Şampiyonlar</span>
                     </div>
                     <div class="nav-item" onclick="switchTab('customSkins', this)">
@@ -1196,7 +1198,7 @@
                     </div>
                 </div>
             </div>
-            <div id="appVersionLabel" class="app-version-label">v1.0.5</div>
+            <div id="appVersionLabel" class="app-version-label">v1.0.7</div>
         </div>
 
         <div class="content-area">
@@ -1245,7 +1247,7 @@
 
                 <!-- ÖZELLİK + SPLASH ART KARTI BÖLÜMÜ -->
                 <h2 style="font-size:18px; font-weight:800; color:var(--text-main); margin:24px 0 14px 0; display:flex; align-items:center; gap:8px;">
-                    <span style="color:var(--accent-color);">⚡</span>
+                    <span style="color:var(--accent-color);"></span>
                     <span id="txt-home-features-header">Uygulama Özellikleri</span>
                 </h2>
 
@@ -1313,7 +1315,7 @@
                             <div class="home-feature-splash-overlay"></div>
                         </div>
                         <div class="home-feature-content">
-                            <div class="home-feature-icon">⚡</div>
+                            <div class="home-feature-icon"></div>
                             <h3 class="home-feature-title" id="txt-feat-smart-title">Akıllı Dosya Eşleştirme</h3>
                             <p class="home-feature-desc" id="txt-feat-smart-desc">Yüklediğin skin dosyasından otomatik şampiyon tespiti ve splash art çekme sistemi.</p>
                             <span class="home-feature-tag" id="txt-home-tag-5">Skin Ekle →</span>
@@ -1517,9 +1519,12 @@
             <!-- ŞAMPİYONLAR PANELİ -->
             <div id="champions-panel" class="panel">
                 <div class="settings-card" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                    <div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="lol-logo.png" style="width:36px; height:36px; filter:invert(1) brightness(0.85); opacity:0.85; flex-shrink:0;" alt="LoL">
+                        <div>
                         <h1 style="font-size:22px; font-weight:800; color:var(--text-main);" id="txt-champ-title">Şampiyon Kütüphanesi</h1>
                         <p style="font-size:13px; color:var(--text-muted); font-weight:600;" id="txt-champ-sub">Kostümleri incelemek ve listeye eklemek için şampiyon seçin</p>
+                        </div>
                     </div>
                     <div id="champStatsBadge" style="background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 12px; padding: 8px 18px; display: flex; align-items: center; gap: 16px;">
                         <div style="text-align:center;">
@@ -1546,7 +1551,7 @@
                         <h2 id="selectedChampTitleName" style="font-size: 20px; font-weight: 800; color: #fff;">Kostümler</h2>
                         <button class="btn-primary" id="randomSkinBtn" onclick="pickRandomSkin()" style="background: var(--accent-color); color:#020617; border:none; display:flex; align-items:center; gap:8px; padding:10px 18px; font-weight:800; box-shadow:0 4px 14px var(--accent-glow);">
                             <svg style="width:16px;height:16px;fill:currentColor;" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
-                            <span id="txt-random-skin-btn">🎲 Rastgele Skin</span>
+                            <span id="txt-random-skin-btn">Rastgele Skin</span>
                         </button>
                     </div>
                     <div id="skinGrid" class="champion-grid"></div>
@@ -1560,25 +1565,25 @@
                         <h1 style="font-size:22px; font-weight:800; color:var(--text-main);" id="txt-custom-title">Özel Skinlerim</h1>
                         <p style="font-size:13px; color:var(--text-muted);" id="txt-custom-sub">Fantome (.fantome, .zip) özel kostüm dosyalarınızı yükleyin ve yönetin</p>
                     </div>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <button class="btn-primary" onclick="addNewSkinFile()" id="txt-add-custom-btn">+ Dosya Ekle (.fantome, .zip, .rar, .wad)</button>
-                        <button class="btn-secondary" onclick="addNewSkinFolder()" id="txt-add-folder-btn" style="background:rgba(255,255,255,0.08); color:var(--text-main); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 18px; font-weight:700; cursor:pointer;">📁 Klasör Ekle</button>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                        <button class="btn-primary" onclick="addNewSkinFile()" id="txt-add-custom-btn">+ Dosya Ekle (.fantome, .zip)</button>
+                        <button class="btn-secondary" onclick="addNewSkinFolder()" id="txt-add-folder-btn" style="background:rgba(255,255,255,0.06); color:var(--text-main); border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:10px 16px; font-weight:700; cursor:pointer;">Klasör İçe Aktar</button>
                     </div>
                 </div>
                 
                 <!-- Kategori Filtre Çipleri -->
                 <div class="filter-chip-list" id="customSkinFilterChips" style="margin-bottom:14px;">
                     <button class="filter-chip active" onclick="filterCustomSkins('all', this)" id="csfilt-all">Tümü</button>
-                    <button class="filter-chip" onclick="filterCustomSkins('champion', this)" id="csfilt-champion">⚔️ Şampiyon</button>
-                    <button class="filter-chip" onclick="filterCustomSkins('chroma', this)" id="csfilt-chroma">🎨 Chroma</button>
-                    <button class="filter-chip" onclick="filterCustomSkins('map', this)" id="csfilt-map">🗺️ Harita</button>
-                    <button class="filter-chip" onclick="filterCustomSkins('hud', this)" id="csfilt-hud">🖥️ HUD</button>
-                    <button class="filter-chip" onclick="filterCustomSkins('audio', this)" id="csfilt-audio">🔊 Ses</button>
-                    <button class="filter-chip" onclick="filterCustomSkins('other', this)" id="csfilt-other">📦 Diğer</button>
+                    <button class="filter-chip" onclick="filterCustomSkins('champion', this)" id="csfilt-champion">Şampiyon</button>
+                    <button class="filter-chip" onclick="filterCustomSkins('chroma', this)" id="csfilt-chroma">Chroma</button>
+                    <button class="filter-chip" onclick="filterCustomSkins('map', this)" id="csfilt-map">Harita</button>
+                    <button class="filter-chip" onclick="filterCustomSkins('hud', this)" id="csfilt-hud">HUD</button>
+                    <button class="filter-chip" onclick="filterCustomSkins('audio', this)" id="csfilt-audio">Ses</button>
+                    <button class="filter-chip" onclick="filterCustomSkins('other', this)" id="csfilt-other">Diğer</button>
                 </div>
 
                 <div class="setting-row" style="margin-bottom:20px;">
-                    <input type="text" id="customSkinSearch" class="form-control" placeholder="Özel skinlerimde ara..." onkeyup="renderCustomSkins()">
+                    <div class="search-clear-wrap"><input type="text" id="customSkinSearch" class="form-control" placeholder="Özel skinlerimde ara..." onkeyup="renderCustomSkins()"><button type="button" class="search-clear-btn" onclick="clearSearchField('customSkinSearch', renderCustomSkins)" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
                 </div>
 
                 <div id="customSkinGrid" class="custom-grid"></div>
@@ -1594,7 +1599,7 @@
                 </div>
 
                 <div class="setting-row" style="margin-bottom:16px;">
-                    <input type="text" id="storeSearch" class="form-control" placeholder="Mağazada mod ara..." onkeyup="renderStoreMods(currentStoreFilter)">
+                    <div class="search-clear-wrap"><input type="text" id="storeSearch" class="form-control" placeholder="Mağazada mod ara..." onkeyup="renderStoreMods(currentStoreFilter)"><button type="button" class="search-clear-btn" onclick="clearSearchField('storeSearch', () => renderStoreMods(currentStoreFilter))" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; margin:-4px 0 14px;">
@@ -1694,7 +1699,7 @@
                             <input type="text" id="appBgUrlInput" class="form-control" placeholder="Görsel URL (PNG/JPG/GIF)">
                             <div style="display:flex; gap:8px;">
                                 <label class="custom-file-upload" style="flex:1;">
-                                    <span id="txt-btn-upload-local-bg">📁 Dosya Yükle</span>
+                                    <span id="txt-btn-upload-local-bg"> Dosya Yükle</span>
                                     <input type="file" id="bgLocalFileInput" accept="image/*" style="display:none;" onchange="handleBgFileUpload(event)">
                                 </label>
                                 <button class="btn-primary" onclick="saveCustomAppBg()"><span id="txt-btn-apply-bg">Uygula</span></button>
@@ -1711,7 +1716,7 @@
                             <input type="text" id="startBtnBgInput" class="form-control" placeholder="Görsel URL...">
                             <div style="display:flex; gap:8px;">
                                 <label class="custom-file-upload" style="flex:1;">
-                                    <span id="txt-btn-upload-startbg">📁 Dosya Yükle</span>
+                                    <span id="txt-btn-upload-startbg"> Dosya Yükle</span>
                                     <input type="file" id="startBtnBgFileInput" accept="image/*" style="display:none;" onchange="handleStartBtnBgFileUpload(event)">
                                 </label>
                                 <button class="btn-primary" onclick="saveStartBtnBg()"><span id="txt-btn-apply-startbg">Ayarla</span></button>
@@ -1735,7 +1740,7 @@
                 <div class="settings-card" style="margin-bottom:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
                         <div>
-                            <h1 style="font-size:22px; font-weight:800; color:var(--text-main);" id="txt-fav-title">❤️ Favorilerim</h1>
+                            <h1 style="font-size:22px; font-weight:800; color:var(--text-main);" id="txt-fav-title">♥ Favorilerim</h1>
                             <p style="font-size:13px; color:var(--text-muted); font-weight:600;" id="txt-fav-sub">Beğendiğin skinleri buradan hızlıca erişebilirsin</p>
                         </div>
                         <button onclick="clearAllFavorites()" style="padding:8px 16px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); color:#ef4444; border-radius:10px; font-weight:800; font-size:12px; cursor:pointer; transition:0.2s;" id="txt-fav-clear-btn">🗑️ Tüm Favorileri Temizle</button>
@@ -1745,7 +1750,7 @@
                     <div id="favEmptyState" style="grid-column:1/-1; text-align:center; padding:60px 20px; color:var(--text-muted);">
                         <div style="font-size:48px; margin-bottom:16px;">💔</div>
                         <div style="font-size:16px; font-weight:700;" id="txt-fav-empty">Henüz favori skinin yok</div>
-                        <div style="font-size:13px; margin-top:8px;" id="txt-fav-empty-sub">Şampiyonlar veya Mağaza'da ❤️ butonuna bas</div>
+                        <div style="font-size:13px; margin-top:8px;" id="txt-fav-empty-sub">Şampiyonlar veya Mağaza'da ♥ butonuna bas</div>
                     </div>
                 </div>
             </div>
@@ -1829,7 +1834,7 @@
                             <div style="font-size:12px; color:var(--text-muted);" id="txt-backup-sub">Tüm özel skin kütüphanenizi ve ayarlarınızı yedekleyin veya aktarın</div>
                         </div>
                         <div style="display:flex; gap:8px;">
-                            <button class="btn-primary" onclick="exportDataBackup()" id="txt-backup-export">💾 Yedek İndir (JSON)</button>
+                            <button class="btn-primary" onclick="exportDataBackup()" id="txt-backup-export"> Yedek İndir (JSON)</button>
                             <input type="file" id="importBackupInput" accept=".json" style="display:none;" onchange="importDataBackup(event)">
                             <button class="btn-primary" onclick="document.getElementById('importBackupInput').click()" id="txt-backup-import">📥 Yedek Yükle</button>
                         </div>
@@ -2023,7 +2028,7 @@
                     ⏰ Daha Sonra Hatırlat
                 </button>
                 <button id="appUpdateBtnStart" class="btn-primary" onclick="startAppUpdateDownload()" style="padding:10px 26px; font-size:13px; font-weight:900; border-radius:12px; background:linear-gradient(135deg, #5865F2 0%, #8b5cf6 100%); color:#fff; cursor:pointer; display:flex; align-items:center; gap:8px; border:none; box-shadow:0 4px 25px rgba(88,101,242,0.45); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 30px rgba(88,101,242,0.6)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 25px rgba(88,101,242,0.45)'">
-                    <span>🚀 Şimdi İndir & Otomatik Güncelle</span>
+                    <span>Şimdi İndir & Otomatik Güncelle</span>
                 </button>
             </div>
 
@@ -2120,7 +2125,7 @@
 
                 <div>
                     <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:800; margin-bottom:4px;">
-                        <span>↔️ Yatay Konum (Sağ - Sol / X)</span>
+                        <span>↔ Yatay Konum (Sağ - Sol / X)</span>
                         <span id="cropPosXValue" style="color:var(--accent-color);">50%</span>
                     </div>
                     <input type="range" id="cropPosXRange" min="0" max="100" value="50" class="form-control" style="width:100%; padding:0; height:8px; cursor:pointer;" oninput="updateCropPreview()">
@@ -2128,7 +2133,7 @@
 
                 <div>
                     <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:800; margin-bottom:4px;">
-                        <span>↕️ Düşey Konum (Yukarı - Aşağı / Y)</span>
+                        <span>↕ Düşey Konum (Yukarı - Aşağı / Y)</span>
                         <span id="cropPosYValue" style="color:var(--accent-color);">50%</span>
                     </div>
                     <input type="range" id="cropPosYRange" min="0" max="100" value="50" class="form-control" style="width:100%; padding:0; height:8px; cursor:pointer;" oninput="updateCropPreview()">
@@ -2138,7 +2143,7 @@
             <!-- Hızlı Ayar Butonları & Kaydet -->
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
                 <button onclick="resetCropValues()" style="padding:10px 16px; background:rgba(255,255,255,0.06); border:1px solid var(--border-color); color:var(--text-main); border-radius:10px; font-weight:800; font-size:12px; cursor:pointer;">🔄 Sıfırla</button>
-                <button onclick="saveCropAdjustment()" class="btn-primary" style="padding:10px 22px; font-weight:900;">💾 Ayarları Kaydet ve Uygula</button>
+                <button onclick="saveCropAdjustment()" class="btn-primary" style="padding:10px 22px; font-weight:900;"> Ayarları Kaydet ve Uygula</button>
             </div>
         </div>
     </div>
@@ -2158,7 +2163,7 @@
                 <label>Skin Splash Art / Görsel Seç (JPG, PNG, GIF)</label>
                 <input type="text" id="editSkinItemImgInput" class="form-control" placeholder="URL veya dosya seçin...">
                 <label class="custom-file-upload" style="margin-top:8px;">
-                    📁 Bilgisayardan Görsel Yükle (JPG/PNG/GIF)
+                     Bilgisayardan Görsel Yükle (JPG/PNG/GIF)
                     <input type="file" id="editSkinImageFileInput" accept="image/jpeg,image/png,image/gif" style="display:none;" onchange="handleEditSkinImageUpload(event)">
                 </label>
             </div>
@@ -2205,7 +2210,7 @@
                 <label id="txt-lbl-admin-img">Önizleme Görseli (PNG/JPG/GIF)</label>
                 <input type="text" id="storeModImg" class="form-control" placeholder="URL veya dosya seçin...">
                 <label class="custom-file-upload" style="margin-top:8px;">
-                    📁 Bilgisayardan Görsel Seç (JPG/PNG/GIF)
+                     Bilgisayardan Görsel Seç (JPG/PNG/GIF)
                     <input type="file" id="adminImageFileInput" accept="image/*" style="display:none;" onchange="handleAdminImageUpload(event)">
                 </label>
             </div>
@@ -2369,7 +2374,7 @@
                 homeStoreNewTitle: "Mağazaya Yeni Gelenler",
                 homeStoreNewBody: "🔥 Cyberpunk Yasuo HUD Modu<br>🔥 Arcane Jinx Özel Ses Paketi<br>🔥 K/DA Ahri Özel Harita Teması",
                 homeFeaturesTitle: "Uygulama Özellikleri",
-                homeFeaturesBody: "⚡ Akıllı Dosya Eşleştirme & Otomatik Splash Art Çekici<br>🎨 Özelleştirilebilir 20+ Tema seçeneği<br>🎵 Dahili ve Sabit Spotify Playlist desteği",
+                homeFeaturesBody: " Akıllı Dosya Eşleştirme & Otomatik Splash Art Çekici<br>🎨 Özelleştirilebilir 20+ Tema seçeneği<br>🎵 Dahili ve Sabit Spotify Playlist desteği",
                 profileSub: "Skynix Koleksiyoneri & Tasarımcı",
                 editProfileBtn: "Profili Düzenle",
                 statTime: "Uygulamada Geçirilen Süre",
@@ -2384,7 +2389,7 @@
                 customTitle: "Özel Skinlerim",
                 customSub: "Özel kostüm dosyalarınızı veya klasörlerinizi yükleyin ve yönetin",
                 addCustomBtn: "+ Dosya Ekle (.fantome, .zip, .rar, .wad)",
-                addFolderBtn: "📁 Klasör Ekle",
+                addFolderBtn: "Klasör Ekle",
                 sidebarSec1: "GENEL",
                 sidebarSec2: "MOD & SKİNLER",
                 sidebarSec3: "SİSTEM & TASARIM",
@@ -2414,16 +2419,16 @@
                 selectExe: "Manuel Seç",
                 backupTitle: "Veri Yedekleme ve Geri Yükleme",
                 backupSub: "Tüm özel skin kütüphanenizi ve ayarlarınızı yedekleyin veya aktarın",
-                backupExport: "💾 Yedek İndir (JSON)",
+                backupExport: " Yedek İndir (JSON)",
                 backupImport: "📥 Yedek Yükle",
                 bgHeader: "Görsel Ayarları",
                 bgCustomTitle: "Uygulama Arka Plan Görseli",
                 bgCustomSub: "JPG, PNG veya GIF görsel URL/dosyası koyun",
-                btnUploadLocalBg: "📁 Dosya Yükle",
+                btnUploadLocalBg: " Dosya Yükle",
                 btnApplyBg: "Uygula",
                 startbgTitle: "Başlat Butonu Arka Plan Görseli",
                 startbgSub: "Buton arka planına PNG/GIF/JPG ekleyin",
-                btnUploadStartBg: "📁 Dosya Yükle",
+                btnUploadStartBg: " Dosya Yükle",
                 btnApplyStartBg: "Ayarla",
                 themeHeader: "Tema & Özel Renk Ayarları",
                 themeSub: "Uygulamanın her bölümüne özel renk atayın veya hazır temalardan birini seçin",
@@ -2463,9 +2468,9 @@
                 searchCustomPlaceholder: "Özel skinlerimde ara...",
                 modFileBadge: "MOD DOSYASI",
                 queueAddRemove: "Sıraya Ekle / Çıkar",
-                btnEdit: "✏️ Düzenle",
+                btnEdit: "✏ Düzenle",
                 btnDelete: "🗑️ Sil",
-                btnExport: "📦 Dışa Aktar (.fantome)",
+                btnExport: "Dışa Aktar (.fantome)",
                 homeTag1: "Özel Skinlerim →",
                 homeTag2: "Şampiyonlara Git →",
                 homeTag3: "Temaları Keşfet →",
@@ -2544,21 +2549,21 @@
                 skyfixerBadgeFailed: "BAŞARISIZ",
                 skyfixerLogHeader: "CANLI İŞLEM LOGLARI",
                 skyfixerLogInit: "Motor hazır. Onarımı başlatmak için aşağıdaki butona basın.",
-                skyfixerBtnModLoader: "⚙️ ModLoader'da Aç",
+                skyfixerBtnModLoader: "⚙ ModLoader'da Aç",
                 skyfixerBtnClose: "Kapat",
                 skyfixerBtnStart: "🔧 Onarımı Başlat",
                 skyfixerBtnReRepair: "🔄 Yeniden Onar",
                 skyfixerWaiting: "Onarım bekleniyor...",
                 skyfixerRepairing: "⏳ Onarılıyor...",
                 skyfixerCompleted: "Skyfixer tamamlandı: tüm seçili düzeltmeler uygulandı.",
-                skyfixerRepairCompleted: "✅ Onarım Tamamlandı",
+                skyfixerRepairCompleted: " Onarım Tamamlandı",
                 skyfixerRepairedNote: "Bu skin daha önce Skyfixer ile başarıyla onarılmış.",
                 // Güncelleme Modalı
                 updateModalTitle: "YENİ SÜRÜM YAYINLANDI",
                 updateModalSubtitle: "Skynix Manager için yeni bir güncelleme mevcut",
                 updateBadgeNew: "YENİ GÜNCELLEME",
                 updateChangelogTitle: "📋 Sürüm Değişiklikleri & Yenilikler",
-                updateBtnDownload: "🚀 Şimdi İndir & Otomatik Güncelle",
+                updateBtnDownload: "Şimdi İndir & Otomatik Güncelle",
                 updateBtnLater: "⏰ Daha Sonra Hatırlat",
                 updateDownloadingMsg: "Yeni sürüm GitHub'dan indiriliyor...",
                 updateInstallMsg: "Kurulum başlatılıyor, uygulama yeniden açılacak..."
@@ -2597,7 +2602,7 @@
                 navThemes: "Themes & Design",
                 navSettings: "Settings",
                 addCustomBtn: "+ Add File (.fantome, .zip, .rar, .wad)",
-                addFolderBtn: "📁 Add Folder",
+                addFolderBtn: " Add Folder",
                 sidebarSec1: "GENERAL",
                 sidebarSec2: "MODS & SKINS",
                 sidebarSec3: "SYSTEM & DESIGN",
@@ -2614,7 +2619,7 @@
                 homeStoreNewTitle: "New Store Arrivals",
                 homeStoreNewBody: "🔥 Cyberpunk Yasuo HUD Mod<br>🔥 Arcane Jinx Voice Pack<br>🔥 K/DA Ahri Map Skin",
                 homeFeaturesTitle: "App Key Features",
-                homeFeaturesBody: "⚡ Smart File Reader & Automatic Splash Art Fetcher<br>🎨 Customizable 20+ Theme options<br>🎵 Built-in and Pinned Spotify Playlist support",
+                homeFeaturesBody: " Smart File Reader & Automatic Splash Art Fetcher<br>🎨 Customizable 20+ Theme options<br>🎵 Built-in and Pinned Spotify Playlist support",
                 profileSub: "Skynix Collector & Designer",
                 editProfileBtn: "Edit Profile",
                 statTime: "Time Spent in App",
@@ -2629,7 +2634,7 @@
                 customTitle: "My Custom Skins",
                 customSub: "Upload and manage your custom skin files or folders",
                 addCustomBtn: "+ Add File (.fantome, .zip, .rar, .wad)",
-                addFolderBtn: "📁 Add Folder",
+                addFolderBtn: " Add Folder",
                 storeTitle: "Skynix Mod Store",
                 storeSub: "Discover custom mods and skins created by the community",
                 adminUploadBtn: "+ Upload Mod (Admin)",
@@ -2655,16 +2660,16 @@
                 selectExe: "Select Manually",
                 backupTitle: "Data Backup & Restore",
                 backupSub: "Backup or restore all your custom skins library and settings",
-                backupExport: "💾 Export Backup (JSON)",
+                backupExport: " Export Backup (JSON)",
                 backupImport: "📥 Import Backup",
                 bgHeader: "Visual Settings",
                 bgCustomTitle: "Application Background Image",
                 bgCustomSub: "Set JPG, PNG or GIF image URL or file",
-                btnUploadLocalBg: "📁 Upload File",
+                btnUploadLocalBg: " Upload File",
                 btnApplyBg: "Apply",
                 startbgTitle: "Start Button Background Image",
                 startbgSub: "Add PNG/GIF/JPG to the button background",
-                btnUploadStartBg: "📁 Upload File",
+                btnUploadStartBg: " Upload File",
                 btnApplyStartBg: "Set",
                 themeHeader: "Theme & Custom Color Settings",
                 themeSub: "Assign custom colors to each section or pick a preset theme",
@@ -2704,7 +2709,7 @@
                 searchCustomPlaceholder: "Search in my custom skins...",
                 modFileBadge: "MOD FILE",
                 queueAddRemove: "Add / Remove Queue",
-                btnEdit: "✏️ Edit",
+                btnEdit: "✏ Edit",
                 btnDelete: "🗑️ Delete",
                 btnExport: "📦 Export (.fantome)",
                 homeTag1: "My Custom Skins →",
@@ -2762,14 +2767,14 @@
                 skyfixerBadgeFailed: "FAILED",
                 skyfixerLogHeader: "LIVE PROCESS LOGS",
                 skyfixerLogInit: "Engine ready. Click the button below to start repair.",
-                skyfixerBtnModLoader: "⚙️ Open in ModLoader",
+                skyfixerBtnModLoader: "⚙ Open in ModLoader",
                 skyfixerBtnClose: "Close",
                 skyfixerBtnStart: "🔧 Start Repair",
                 skyfixerBtnReRepair: "🔄 Re-Repair",
                 skyfixerWaiting: "Waiting for repair...",
                 skyfixerRepairing: "⏳ Repairing...",
                 skyfixerCompleted: "Skyfixer completed: all selected fixes have been applied.",
-                skyfixerRepairCompleted: "✅ Repair Completed",
+                skyfixerRepairCompleted: " Repair Completed",
                 skyfixerRepairedNote: "This skin was previously successfully repaired with Skyfixer.",
                 // Update Modal
                 updateModalTitle: "NEW VERSION RELEASED",
@@ -2872,8 +2877,8 @@
             setText('txt-sidebar-sec1', dict.sidebarSec1 || 'GENEL');
             setText('txt-sidebar-sec2', dict.sidebarSec2 || 'MOD & SKİNLER');
             setText('txt-sidebar-sec3', dict.sidebarSec3 || 'SİSTEM & TASARIM');
-            setText('txt-random-skin-btn', currentLang === 'tr' ? '🎲 Rastgele Skin' : '🎲 Random Skin');
-            setText('txt-store-chroma', '🎨 Chroma');
+            setText('txt-random-skin-btn', currentLang === 'tr' ? 'Rastgele Skin' : '🎲 Random Skin');
+            setText('txt-store-chroma', 'Chroma');
             setText('txt-champ-count-label', currentLang === 'tr' ? 'ŞAMPİYON' : 'CHAMPION');
             setText('txt-skin-count-label', currentLang === 'tr' ? 'KOSTÜM' : 'SKINS');
             setText('txt-champ-title', currentLang === 'tr' ? 'Şampiyon Kütüphanesi' : 'Champion Library');
@@ -3133,8 +3138,8 @@
                 if (msg === 'Yedek JSON dosyası indirildi!') msg = 'Backup JSON file downloaded!';
                 if (msg === 'Yedek başarıyla aktarıldı!') msg = 'Backup imported successfully!';
                 if (msg === 'Yedek dosyası okunamadı veya geçersiz format!') msg = 'Backup file could not be read or has an invalid format!';
-                if (msg === '✅ Admin modu aktifleştirildi!') msg = '✅ Admin mode enabled!';
-                if (msg === '❌ Hatalı kod!') msg = '❌ Invalid code!';
+                if (msg === 'Admin modu aktifleştirildi!') msg = 'Admin mode enabled!';
+                if (msg === ' Hatalı kod!') msg = ' Invalid code!';
             }
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
@@ -3434,9 +3439,9 @@
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // 🎯 GÖRSEL KONUM & BOYUT DÜZENLEME MODALI (Image Crop & Position)
-        // ═══════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         let cropCurrentTarget = 'banner';
 
         function openImageCropModal(target, customUrl = null) {
@@ -3523,10 +3528,10 @@
 
             if (cropCurrentTarget === 'banner') {
                 localStorage.setItem('skynix_bannerCropData', JSON.stringify(config));
-                showToast(currentLang === 'tr' ? '✅ Banner boyutu ve konumu kaydedildi!' : '✅ Banner size and position saved!');
+                showToast(currentLang === 'tr' ? ' Banner boyutu ve konumu kaydedildi!' : ' Banner size and position saved!');
             } else {
                 localStorage.setItem('skynix_avatarCropData', JSON.stringify(config));
-                showToast(currentLang === 'tr' ? '✅ Avatar boyutu ve konumu kaydedildi!' : '✅ Avatar size and position saved!');
+                showToast(currentLang === 'tr' ? ' Avatar boyutu ve konumu kaydedildi!' : ' Avatar size and position saved!');
             }
 
             updateProfileUI();
@@ -3557,12 +3562,12 @@
             try {
                 const result = await window.electronAPI.clearInstalledSkins();
                 if (result.success) {
-                    showToast(currentLang === 'tr' ? `✅ ${result.count} skin dosyası temizlendi!` : `✅ ${result.count} skin file(s) cleared!`);
+                    showToast(currentLang === 'tr' ? ` ${result.count} skin dosyası temizlendi!` : ` ${result.count} skin file(s) cleared!`);
                 } else {
-                    showToast(currentLang === 'tr' ? '❌ Hata: ' + (result.message || 'Bilinmeyen hata') : '❌ Error: ' + (result.message || 'Unknown error'));
+                    showToast(currentLang === 'tr' ? ' Hata: ' + (result.message || 'Bilinmeyen hata') : ' Error: ' + (result.message || 'Unknown error'));
                 }
             } catch (e) {
-                showToast(currentLang === 'tr' ? '❌ Temizleme sırasında hata: ' + e.message : '❌ Error during cleanup: ' + e.message);
+                showToast(currentLang === 'tr' ? ' Temizleme sırasında hata: ' + e.message : ' Error during cleanup: ' + e.message);
             }
         }
 
@@ -3574,6 +3579,20 @@
             localStorage.setItem('profileName', newName);
             localStorage.setItem('profileBanner', newBanner);
             localStorage.setItem('profileAvatar', newAvatar);
+
+            // Aktif kullanıcı kaydını da güncelle
+            try {
+                const uid = localStorage.getItem('skynix_current_user');
+                if (uid && typeof getUsers === 'function') {
+                    const users = getUsers();
+                    const uIdx = users.findIndex(u => u.id === uid);
+                    if (uIdx >= 0) {
+                        users[uIdx].username = newName;
+                        users[uIdx].globalName = newName;
+                        saveUsers(users);
+                    }
+                }
+            } catch (_) {}
 
             updateProfileUI();
             closeProfileEditModal();
@@ -3600,6 +3619,13 @@
             }
 
             if (tabId === 'customSkins') renderCustomSkins();
+            if (tabId === 'champions') {
+                if (allChampions && Object.keys(allChampions).length > 0) {
+                    renderChampionGrid(Object.values(allChampions));
+                } else {
+                    fetchChampions();
+                }
+            }
             if (tabId === 'store') {
                 renderStoreMods('all');
                 // GitHub mağaza kataloğunu her girişte yenile; uygulama açıkken eklenen modlar da görünür.
@@ -3812,8 +3838,8 @@
                     renderCustomSkins();
                     updateProfileUI();
                     showToast(currentLang === 'tr'
-                        ? `✅ ${addedCount} skin installed/ klasörüne (META & WAD yapısıyla) kaydedildi!`
-                        : `✅ ${addedCount} skin(s) saved to installed/ folder (with META & WAD structure)!`);
+                        ? ` ${addedCount} skin installed/ klasörüne (META & WAD yapısıyla) kaydedildi!`
+                        : ` ${addedCount} skin(s) saved to installed/ folder (with META & WAD structure)!`);
                 }
             } else {
                 document.getElementById('directSkinFileInput').click();
@@ -3868,8 +3894,8 @@
                     renderCustomSkins();
                     updateProfileUI();
                     showToast(currentLang === 'tr'
-                        ? `✅ '${cleanTitle}' klasörü installed/ dizinine (META & WAD) aktarıldı!`
-                        : `✅ '${cleanTitle}' folder imported to installed/ directory (META & WAD)!`);
+                        ? ` '${cleanTitle}' klasörü installed/ dizinine (META & WAD) aktarıldı!`
+                        : ` '${cleanTitle}' folder imported to installed/ directory (META & WAD)!`);
                 }
             }
         }
@@ -4043,8 +4069,8 @@
             if (preparedPaths.length > 0 && window.electronAPI && window.electronAPI.runCslolSkin) {                // İlk overlay oluşturma bazen araçların dosya kilidini bırakmasını bekler.
                 // Kısa ve sınırlı retry ile ilk tıklamada güvenilir başlatma sağlanır.
                 let combinedResult = null;
-                for (let attempt = 0; attempt < 3; attempt++) {
-                    if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 800));
+                for (let attempt = 0; attempt < 4; attempt++) {
+                    if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 900 * attempt));
                     combinedResult = await window.electronAPI.runCslolSkin({
                         skinPath: preparedPaths[0],
                         lolExePath: lolPath,
@@ -4277,6 +4303,13 @@
             });
         }
 
+        function clearSearchField(id, refresh) {
+            const input = document.getElementById(id);
+            if (!input) return;
+            input.value = '';
+            if (typeof refresh === 'function') refresh();
+            input.focus();
+        }
         function clearChampionSearch() {
             const input = document.getElementById('championSearch');
             if (!input) return;
@@ -4364,9 +4397,10 @@
 
                     // Varsayılan (0. num) skinleri ve chroma varyasyonlarını kaldır
                     if (s.num === 0 || s.name.toLowerCase() === 'default' || lowerSkinName === champData.name.toLowerCase()) continue;
-                    // Chroma varyasyonlarını (parantezli isimler) ana listeden kaldır (RGB Chroma butonundan erişilir)
+                    // Chroma varyasyonlarını (parantezli isimler veya 'rengi', 'chroma' içeren ayrı alt varyantlar) ana listeden kaldır (RGB Chroma butonundan erişilir)
                     if (s.name.includes('(') && s.name.includes(')')) continue;
                     if (lowerSkinName.includes('traditional') || lowerSkinName.includes('legacy') || lowerSkinName.includes('eski')) continue;
+                    if (lowerSkinName.includes(' rengi') || lowerSkinName.includes(' chroma') || lowerSkinName.endsWith(' rengi')) continue;
 
                     const skinName = s.name;
 
@@ -4375,20 +4409,23 @@
                     const foundOverride = fiddleSplashOverride[overrideKey] || fiddleNameOverride[nameKey];
 
                     const ddragonSplash = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champId}_${s.num}.jpg`;
+                    const ddragonLoading = `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${champId}_${s.num}.jpg`;
                     const splashImg = (champId === 'Fiddlesticks' && foundOverride)
                         ? foundOverride
                         : ddragonSplash;
                     const latestAsset = latestSkinAssets.find(asset => asset.id % 1000 === s.num);
-                    const latestPath = latestAsset?.splashPath || latestAsset?.uncenteredSplashPath || latestAsset?.tilePath;
-                    const cardImg = latestPath ? cDragonAssetUrl(latestPath) : splashImg;
+                    const latestLoadingPath = latestAsset?.loadScreenPath;
+                    const latestSplashPath = latestAsset?.splashPath || latestAsset?.uncenteredSplashPath || latestAsset?.tilePath;
+                    
+                    // Loading screen (portrait / dikey format)
+                    const cardImg = latestLoadingPath ? cDragonAssetUrl(latestLoadingPath) : ddragonLoading;
                     const imageKey = `${champId}_${s.num}`;
                     skinImageFallbacks[imageKey] = [
                         cardImg,
+                        ddragonLoading,
+                        latestSplashPath ? cDragonAssetUrl(latestSplashPath) : '',
                         splashImg,
-                        ddragonSplash,
-                        latestAsset?.uncenteredSplashPath ? cDragonAssetUrl(latestAsset.uncenteredSplashPath) : '',
-                        latestAsset?.tilePath ? cDragonAssetUrl(latestAsset.tilePath) : '',
-                        `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${champId}_${s.num}.jpg`
+                        ddragonSplash
                     ].filter((url, index, all) => url && all.indexOf(url) === index);
                     const actionLabel = currentLang === 'tr' ? 'Sıraya Ekle / Çıkar' : 'Add / Remove';
                     const favKey = `${champId}_${s.num}`;
@@ -4440,7 +4477,7 @@
 
             const skinNameEl = randomCard.querySelector('.champion-name');
             const skinName = skinNameEl ? skinNameEl.innerText : '';
-            showToast(currentLang === 'tr' ? `🎲 Rastgele seçilen skin: ${skinName}` : `🎲 Random skin selected: ${skinName}`);
+            showToast(currentLang === 'tr' ? `Rastgele seçilen skin: ${skinName}` : `🎲 Random skin selected: ${skinName}`);
         }
 
         // YENİ NESİL DEVASA SPLASH ART DESTEKLİ CHROMA SEÇİCİ
@@ -4469,13 +4506,15 @@
 
         function loadSkinImageFallback(image, imageKey) {
             const candidates = skinImageFallbacks[imageKey] || [];
-            const current = image.dataset.currentFallback || '';
+            const current = image.dataset.currentFallback || image.src || '';
             const nextIndex = current ? Math.max(0, candidates.indexOf(current) + 1) : 1;
             const next = candidates[nextIndex];
             if (!next) {
                 image.onerror = null;
-                const card = image.closest('.champion-card');
-                if (card) card.remove();
+                const parts = imageKey ? imageKey.split('_') : [];
+                if (parts.length >= 2) {
+                    image.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${parts[0]}_${parts[1]}.jpg`;
+                }
                 return;
             }
             image.dataset.currentFallback = next;
@@ -4721,8 +4760,8 @@
                 renderCustomSkins();
                 updateProfileUI();
                 showToast(currentLang === 'tr'
-                    ? `✅ ${addedCount} skin installed klasörüne kaydedildi!`
-                    : `✅ ${addedCount} skin(s) saved to installed folder!`);
+                    ? ` ${addedCount} skin installed klasörüne kaydedildi!`
+                    : ` ${addedCount} skin(s) saved to installed folder!`);
             } else {
                 showToast(currentLang === 'tr'
                     ? 'Lütfen sadece .zip veya .fantome uzantılı dosya seçin!'
@@ -4781,39 +4820,49 @@
             return labels[category] || (currentLang === 'tr' ? 'MOD DOSYASI' : 'MOD FILE');
         }
 
-                function renderCustomSkins() {
+        let activeDraggingCustomSkinIndex = null;
+        let activeEditingPresetId = null;
+
+        function renderCustomSkins() {
             const grid = document.getElementById('customSkinGrid');
             if (!grid) return;
             const searchVal = (document.getElementById('customSkinSearch')?.value || '').toLowerCase();
             const dict = dictionary[currentLang];
             grid.innerHTML = '';
 
-            let list = customSkinsList.map(s => ({ ...s, category: s.category || 'champion' }));
+            let customList = customSkinsList.map(s => ({ ...s, category: s.category || 'champion' }));
             if (currentCustomFilter !== 'all') {
-                list = list.filter(s => detectSkinCategory(s) === currentCustomFilter);
+                customList = customList.filter(s => detectSkinCategory(s) === currentCustomFilter);
             }
             if (searchVal) {
-                list = list.filter(s => (s.title || '').toLowerCase().includes(searchVal) || (s.champ || '').toLowerCase().includes(searchVal));
+                customList = customList.filter(s => (s.title || '').toLowerCase().includes(searchVal) || (s.champ || '').toLowerCase().includes(searchVal));
             }
 
-            if (list.length === 0) {
+            // ÖZEL SKİNLERİ RENDER ET (Sürüklenebilir Kartlar)
+            if (customList.length === 0) {
                 grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-muted);">${dict.emptyCustomSkins}</div>`;
                 return;
             }
 
-            list.forEach((skin, idx) => {
+            customList.forEach((skin, idx) => {
                 const details = parseSkinCardDetails(skin);
                 const isQueued = activeQueue.some(x => x.title === (skin.title || details.title));
                 const favoriteKey = getCustomFavoriteKey(skin);
                 const isFavoriteSkin = isFavorite(favoriteKey);
                 const categoryLabel = customCategoryLabel(detectSkinCategory(skin));
+                
                 grid.innerHTML += `
-                    <div class="custom-card-frame" style="cursor:pointer;" onclick="toggleSkinQueue('${(skin.title || details.title).replace(/'/g, "\\'")}', '${details.img}')">
+                    <div class="custom-card-frame" 
+                         draggable="true" 
+                         ondragstart="handleCustomSkinDragStart(event, ${idx})" 
+                         style="cursor:pointer;" 
+                         onclick="toggleSkinQueue('${(skin.title || details.title).replace(/'/g, "\\'")}', '${details.img}')">
+                        
                         <div class="three-dots-btn" onclick="toggleDropdownMenu(event, ${idx})">⋮</div>
                         <div class="card-menu-dropdown" id="dropdown-${idx}">
                             <div class="dropdown-item" onclick="event.stopPropagation(); openEditSkinModal(${idx})">${dict.btnEdit}</div>
-                            <div class="dropdown-item" onclick="event.stopPropagation(); exportCustomSkin(${idx})">${dict.btnExport || '📦 Dışa Aktar (.fantome)'}</div>
-                            <div class="dropdown-item" onclick="event.stopPropagation(); runSkinFixerAction(${idx})">🔧 Skyfixer (Otomatik Onar)</div>
+                            <div class="dropdown-item" onclick="event.stopPropagation(); exportCustomSkin(${idx})">${dict.btnExport || 'Dışa Aktar (.fantome)'}</div>
+                            <div class="dropdown-item" onclick="event.stopPropagation(); runSkinFixerAction(${idx})">Skyfixer (Otomatik Onar)</div>
                             <div class="dropdown-item danger" onclick="event.stopPropagation(); deleteCustomSkin(${idx})">${dict.btnDelete}</div>
                         </div>
 
@@ -4827,7 +4876,7 @@
                             <div style="font-size:11px; color:var(--text-muted); font-weight:600; margin-top:-2px;">${details.author}</div>
                             
                             <button class="btn-primary" style="margin-top:10px; width:100%; justify-content:center; ${isQueued ? 'background:#ef4444; color:#fff;' : ''}">
-                                ${isQueued ? (currentLang === 'tr' ? '✕ Kuyruktan Çıkar' : '✕ Remove Queue') : (currentLang === 'tr' ? '➕ Kuyruğa Ekle' : '➕ Add to Queue')}
+                                ${isQueued ? (currentLang === 'tr' ? 'Kuyruktan Çıkar' : 'Remove Queue') : (currentLang === 'tr' ? '+ Kuyruğa Ekle' : '+ Add to Queue')}
                             </button>
                         </div>
                     </div>
@@ -5007,15 +5056,15 @@
                                 } catch (_) {}
                             }
                             if (badgeEl) {
-                                badgeEl.innerText = currentLang === 'tr' ? '✅ ONARILMIŞ' : '✅ REPAIRED';
+                                badgeEl.innerText = currentLang === 'tr' ? ' ONARILMIŞ' : ' REPAIRED';
                                 badgeEl.style.color = '#22c55e';
                                 badgeEl.style.background = 'rgba(34,197,94,0.15)';
                                 badgeEl.style.borderColor = 'rgba(34,197,94,0.4)';
                             }
                             if (descEl) {
                                 descEl.innerHTML = currentLang === 'tr'
-                                    ? `✨ <b style="color:#22c55e;">Bu skin daha önce Skyfixer ile başarıyla onarılmış</b>${dateStr ? ' (' + dateStr + ')' : ''}. İsterseniz tekrar onarabilirsiniz.`
-                                    : `✨ <b style="color:#22c55e;">This skin was previously repaired</b>${dateStr ? ' (' + dateStr + ')' : ''}. You can re-repair if needed.`;
+                                    ? ` <b style="color:#22c55e;">Bu skin daha önce Skyfixer ile başarıyla onarılmış</b>${dateStr ? ' (' + dateStr + ')' : ''}. İsterseniz tekrar onarabilirsiniz.`
+                                    : ` <b style="color:#22c55e;">This skin was previously repaired</b>${dateStr ? ' (' + dateStr + ')' : ''}. You can re-repair if needed.`;
                             }
                             if (startBtn) {
                                 startBtn.innerHTML = currentLang === 'tr' ? `<span>🔄 Yeniden Onar</span>` : `<span>🔄 Re-Repair</span>`;
@@ -5048,7 +5097,7 @@
             const term = document.getElementById('skyfixerTerminalLog');
             if (!term) return;
             // Windows CLI çıktısını ekrana yazmadan önce UTF-8 olarak düzelt.
-            // Böylece Ã§/Ã¶ gibi bozuk karakterler ve eski Topaz etiketi görünmez.
+            // Böylece ç/ö gibi bozuk karakterler ve eski Topaz etiketi görünmez.
             let cleanMessage = String(message ?? '');
             const broken = /[\u00C3\u00C2\u00C4\u00C5\u00C6\u00D0\u00E2\uFFFD]/;
             for (let i = 0; i < 3 && broken.test(cleanMessage); i++) {
@@ -5170,13 +5219,13 @@
 
             if (!skinPath) {
                 appendSkyfixerLog('[HATA] Onarılacak skin klasörü bulunamadı!', 'error');
-                showToast(currentLang === 'tr' ? '❌ Skin klasörü bulunamadı.' : '❌ Skin folder not found.');
+                showToast(currentLang === 'tr' ? ' Skin klasörü bulunamadı.' : ' Skin folder not found.');
                 return;
             }
 
             if (!window.electronAPI?.runSkyfixer) {
                 appendSkyfixerLog('[HATA] Skyfixer motor köprüsü bulunamadı.', 'error');
-                showToast('❌ Skyfixer bu ortamda kullanılamıyor.');
+                showToast(' Skyfixer bu ortamda kullanılamıyor.');
                 return;
             }
 
@@ -5208,15 +5257,15 @@
                 appendSkyfixerLog('[BAŞLAT] Skyfixer motoru başlatılıyor...', 'info');
                 const res = await window.electronAPI.runSkyfixer(skinPath);
                 if (res && res.ok) {
-                    showToast(currentLang === 'tr' ? '✅ Skyfixer onarımı başarıyla tamamlandı!' : '✅ Skyfixer repair completed successfully!');
+                    showToast(currentLang === 'tr' ? ' Skyfixer onarımı başarıyla tamamlandı!' : ' Skyfixer repair completed successfully!');
                     if (startBtn) {
-                        startBtn.innerHTML = `<span>✅ Onarım Tamamlandı</span>`;
+                        startBtn.innerHTML = `<span> Onarım Tamamlandı</span>`;
                         startBtn.style.background = '#22c55e';
                         const doneDict = (typeof dictionary !== 'undefined' && dictionary[currentLang]) || {};
-                        startBtn.innerHTML = `<span>${doneDict.skyfixerRepairCompleted || (currentLang === 'tr' ? '✅ Onarım Tamamlandı' : '✅ Repair Completed')}</span>`;
+                        startBtn.innerHTML = `<span>${doneDict.skyfixerRepairCompleted || (currentLang === 'tr' ? ' Onarım Tamamlandı' : ' Repair Completed')}</span>`;
                     }
                 } else {
-                    showToast('❌ ' + ((res && res.error) || (currentLang === 'tr' ? 'Onarım başarısız.' : 'Repair failed.')));
+                    showToast(' ' + ((res && res.error) || (currentLang === 'tr' ? 'Onarım başarısız.' : 'Repair failed.')));
                     if (startBtn) {
                         startBtn.disabled = false;
                         startBtn.style.opacity = '1';
@@ -5225,7 +5274,7 @@
                 }
             } catch (err) {
                 appendSkyfixerLog('[HATA] ' + err.message, 'error');
-                showToast('❌ Hata: ' + err.message);
+                showToast(' Hata: ' + err.message);
                 if (startBtn) {
                     startBtn.disabled = false;
                     startBtn.style.opacity = '1';
@@ -5242,7 +5291,7 @@
             if (!item) return;
             const skinPath = currentSkyfixerSkinPath || item.path;
             if (!skinPath) {
-                showToast('❌ Skin yolu bulunamadı.');
+                showToast(' Skin yolu bulunamadı.');
                 return;
             }
             if (window.electronAPI?.openSkyfixer) {
@@ -5293,8 +5342,8 @@ async function exportCustomSkin(idx) {
 
             if (!skinPath) {
                 showToast(currentLang === 'tr'
-                    ? '❌ Dışa aktarılacak dosya bulunamadı! Skini tekrar ekleyin.'
-                    : '❌ Export file not found! Please re-add the skin.');
+                    ? ' Dışa aktarılacak dosya bulunamadı! Skini tekrar ekleyin.'
+                    : ' Export file not found! Please re-add the skin.');
                 return;
             }
 
@@ -5305,7 +5354,7 @@ async function exportCustomSkin(idx) {
             } else if (result && result.canceled) {
                 // İptal
             } else {
-                showToast('❌ ' + ((result && result.message) || (currentLang === 'tr' ? 'Dışa aktarma başarısız.' : 'Export failed.')));
+                showToast(' ' + ((result && result.message) || (currentLang === 'tr' ? 'Dışa aktarma başarısız.' : 'Export failed.')));
             }
         }
 
@@ -5621,9 +5670,9 @@ async function exportCustomSkin(idx) {
             }
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // ❤️  FAVORİLER SİSTEMİ
-        // ═══════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // ♥  FAVORİLER SİSTEMİ
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         let skinFavorites = JSON.parse(localStorage.getItem('skynix_favorites') || '{}');
 
         function saveFavorites() {
@@ -5660,7 +5709,7 @@ async function exportCustomSkin(idx) {
                     void btn.offsetWidth; // reflow
                     btn.classList.add('fav-pop');
                 }
-                showToast(currentLang === 'tr' ? `❤️ Favorilere eklendi: ${skinName}` : `❤️ Added to favorites: ${skinName}`);
+                showToast(currentLang === 'tr' ? `♥ Favorilere eklendi: ${skinName}` : `♥ Added to favorites: ${skinName}`);
             }
             saveFavorites();
             // Eğer favoriler paneli açıksa yenile
@@ -5719,9 +5768,9 @@ async function exportCustomSkin(idx) {
             showToast(currentLang === 'tr' ? '🗑️ Tüm favoriler temizlendi!' : '🗑️ All favorites cleared!');
         }
 
-        // ═══════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         // 🔄 GÜNCELLEME KONTROLÜ (Manuel)
-        // ═══════════════════════════════════════════════════════════════
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         async function manualCheckUpdate() {
             const btn = document.getElementById('btnCheckUpdate');
             const result = document.getElementById('updateCheckResult');
@@ -5754,15 +5803,15 @@ async function exportCustomSkin(idx) {
                     if (result) {
                         result.style.color = '#22c55e';
                         result.innerText = currentLang === 'tr'
-                            ? `✅ Güncelsin! En son sürüm: v${localVersion}`
-                            : `✅ Up to date! Current version: v${localVersion}`;
+                            ? ` Güncelsin! En son sürüm: v${localVersion}`
+                            : ` Up to date! Current version: v${localVersion}`;
                     }
-                    showToast(currentLang === 'tr' ? '✅ Uygulama güncel!' : '✅ App is up to date!');
+                    showToast(currentLang === 'tr' ? ' Uygulama güncel!' : ' App is up to date!');
                 }
             } catch (err) {
                 if (result) {
                     result.style.color = '#ef4444';
-                    result.innerText = currentLang === 'tr' ? `❌ Kontrol başarısız: ${err.message}` : `❌ Check failed: ${err.message}`;
+                    result.innerText = currentLang === 'tr' ? ` Kontrol başarısız: ${err.message}` : ` Check failed: ${err.message}`;
                 }
             } finally {
                 if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
@@ -5801,20 +5850,20 @@ async function exportCustomSkin(idx) {
                 if (window.electronAPI && window.electronAPI.syncDbFromGithub) {
                     const result = await window.electronAPI.syncDbFromGithub();
                     if (result && result.success) {
-                        showToast(currentLang === 'tr' ? '✅ Tüm skin veritabanı başarıyla indirildi ve kuruldu!' : '✅ Entire skin database downloaded and installed!');
+                        showToast(currentLang === 'tr' ? ' Tüm skin veritabanı başarıyla indirildi ve kuruldu!' : ' Entire skin database downloaded and installed!');
                     } else {
-                        showToast(currentLang === 'tr' ? '❌ İndirme başarısız: ' + (result ? result.error : 'Bilinmeyen hata') : '❌ Download failed: ' + (result ? result.error : 'Unknown error'));
+                        showToast(currentLang === 'tr' ? ' İndirme başarısız: ' + (result ? result.error : 'Bilinmeyen hata') : ' Download failed: ' + (result ? result.error : 'Unknown error'));
                     }
                 } else {
-                    showToast(currentLang === 'tr' ? '⚠️ Bu özellik sadece masaüstü sürümünde aktiftir.' : '⚠️ Feature available only in desktop mode.');
+                    showToast(currentLang === 'tr' ? '⚠ Bu özellik sadece masaüstü sürümünde aktiftir.' : '⚠ Feature available only in desktop mode.');
                 }
             } catch (err) {
-                showToast(currentLang === 'tr' ? '❌ Hata oluştu: ' + err.message : '❌ Error: ' + err.message);
+                showToast(currentLang === 'tr' ? ' Hata oluştu: ' + err.message : ' Error: ' + err.message);
             } finally {
                 if (btn) {
                     btn.disabled = false;
                     btn.style.opacity = '1';
-                    btn.innerText = '☁️ GitHub\'dan İndir / Senkronize Et';
+                    btn.innerText = 'â˜ï¸ GitHub\'dan İndir / Senkronize Et';
                 }
             }
         }
@@ -5921,8 +5970,8 @@ async function exportCustomSkin(idx) {
 
                     if (files.length === 0) {
                         showToast(currentLang === 'tr'
-                            ? '❌ Sadece .zip, .rar, .7z, .fantome, .wad, .client veya Klasör yükleyebilirsiniz!'
-                            : '❌ Only .zip, .rar, .7z, .fantome, .wad, .client files or Folders supported!');
+                            ? ' Sadece .zip, .rar, .7z, .fantome, .wad, .client veya Klasör yükleyebilirsiniz!'
+                            : ' Only .zip, .rar, .7z, .fantome, .wad, .client files or Folders supported!');
                         return;
                     }
                     let addedCount = 0;
@@ -5972,8 +6021,8 @@ async function exportCustomSkin(idx) {
                     if (addedCount > 0) {
                         localStorage.setItem('customSkinsList', JSON.stringify(customSkinsList));
                         showToast(currentLang === 'tr'
-                            ? `✅ ${addedCount} skin eklendi ve kuruldu!`
-                            : `✅ ${addedCount} skin(s) added and installed!`);
+                            ? ` ${addedCount} skin eklendi ve kuruldu!`
+                            : ` ${addedCount} skin(s) added and installed!`);
                         switchTab('customSkins');
                         renderCustomSkins();
                         updateProfileUI();
@@ -6133,7 +6182,7 @@ async function exportCustomSkin(idx) {
                     localStorage.setItem('skynix_current_user', discordUser.id);
                     localStorage.setItem('isAdminMode', user.isAdmin ? 'true' : 'false');
                     if (status) status.style.color = '#22c55e';
-                    if (status) status.textContent = `✅ Hoş geldin, ${discordUser.username}!`;
+                    if (status) status.textContent = ` Hoş geldin, ${discordUser.username}!`;
                     setTimeout(() => hideLoginScreen(), 800);
                 } else {
                     if (btn) {
@@ -6143,7 +6192,7 @@ async function exportCustomSkin(idx) {
                     }
                     if (status) {
                         status.style.color = '#ef4444';
-                        status.textContent = '❌ ' + (result.error || 'Giriş başarısız');
+                        status.textContent = ' ' + (result.error || 'Giriş başarısız');
                     }
                 }
             } catch (err) {
@@ -6154,7 +6203,7 @@ async function exportCustomSkin(idx) {
                 }
                 if (status) {
                     status.style.color = '#ef4444';
-                    status.textContent = '❌ Hata: ' + err.message;
+                    status.textContent = ' Hata: ' + err.message;
                 }
             }
         }
@@ -6171,14 +6220,17 @@ async function exportCustomSkin(idx) {
             }
             const user = getCurrentUser();
             if (user) {
-                const displayName = user.globalName || user.username;
+                const savedCustomName = localStorage.getItem('profileName');
+                const displayName = savedCustomName || user.globalName || user.username;
                 localStorage.setItem('profileName', displayName);
-                if (user.avatar) localStorage.setItem('profileAvatar', user.avatar);
+                if (user.avatar && !localStorage.getItem('profileAvatar')) {
+                    localStorage.setItem('profileAvatar', user.avatar);
+                }
                 const navName = document.getElementById('navProfileName');
                 if (navName) navName.textContent = displayName;
                 // Ayarlar'daki rol badge'ini güncelle
                 const roleBadge = document.getElementById('userRoleBadge');
-                if (roleBadge) roleBadge.textContent = user.isAdmin ? '👑 Herobrine (Admin)' : '⚔️ Skynix Kullanıcısı';
+                if (roleBadge) roleBadge.textContent = user.isAdmin ? '👑 Herobrine (Admin)' : '⚔ Skynix Kullanıcısı';
                 updateProfileUI();
             }
         }
@@ -6198,11 +6250,11 @@ async function exportCustomSkin(idx) {
                     saveUsers(users);
                 }
                 localStorage.setItem('isAdminMode', 'true');
-                showToast('✅ Admin modu aktifleştirildi!');
+                showToast('Admin modu aktifleştirildi!');
                 updateProfileUI();
                 renderStoreMods(currentStoreFilter);
             } else if (code !== null) {
-                showToast('❌ Hatalı kod!');
+                showToast(' Hatalı kod!');
             }
         }
         // ========== END AUTH SYSTEM ==========
@@ -6226,6 +6278,110 @@ async function exportCustomSkin(idx) {
             });
         }
 
+// ════════ OTOMATİK DESTANSI / EFSANEVİ ŞAMPİYON KOSTÜMÜ SEÇİCİ ════════
+async function handleAutoPickedChampion(championId) {
+    try {
+        const foundChamp = Object.values(allChampions).find(c => String(c.key) === String(championId) || Number(c.key) === Number(championId));
+        if (!foundChamp) return;
+        const champId = foundChamp.id;
+        const champKey = String(foundChamp.key);
+        const champNameLower = (foundChamp.name || '').toLowerCase().trim();
+        const champIdLower = champId.toLowerCase().trim();
+
+        // 1. KAPSAMLI KONTROL: Sırada bu şampiyona ait bir skin (Özel Mod, Mağaza Modu veya Riot Skini) VAR MI?
+        const hasExistingSkin = activeQueue.some(item => {
+            // İlgili modun detaylarını bul
+            const customObj = customSkinsList.find(s => s.title === item.title || s.file === item.title) || item;
+            const details = typeof parseSkinCardDetails === 'function' ? parseSkinCardDetails(customObj) : customObj;
+
+            const itemChampId = String(item.champId || customObj.champId || '').toLowerCase().trim();
+            const itemChamp = String(item.champ || customObj.champ || details.champ || '').toLowerCase().trim();
+            const itemChampKey = String(item.champKey || customObj.champKey || '').trim();
+            const itemTitle = String(item.title || customObj.title || '').toLowerCase().trim();
+            const itemPath = String(item.path || customObj.path || customObj.file || '').toLowerCase().trim();
+
+            // Karşılaştırma senaryoları:
+            // a) Key veya ID eşleşmesi (Örn: "238" veya "Zed")
+            if (itemChampKey && itemChampKey === champKey) return true;
+            if (itemChampId && (itemChampId === champIdLower || itemChampId === champNameLower)) return true;
+
+            // b) Şampiyon adı eşleşmesi (Örn: "Zed", "Wisteria Talon")
+            if (itemChamp && (itemChamp === champNameLower || itemChamp === champIdLower)) return true;
+
+            // c) Başlık veya dosya yolu içinde şampiyon adı geçiyor mu (Örn: "Zed - Galaxy Slayer.fantome", "Talon")
+            if (itemTitle.includes(champNameLower) || itemTitle.includes(champIdLower)) return true;
+            if (itemPath.includes(champNameLower) || itemPath.includes(champIdLower)) return true;
+
+            return false;
+        });
+
+        if (hasExistingSkin) {
+            console.log(`[AutoPick] ${foundChamp.name} için zaten bir skin sırada mevcut, yeni bir skin eklenmedi.`);
+            // Eğer motor çalışmıyorsa mevcut skini otomatik başlat
+            if (!skinsActive && !isInjectingMods && typeof injectActiveMods === 'function') {
+                setTimeout(() => injectActiveMods(), 400);
+            }
+            return;
+        }
+
+        const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${latestLoLVersion}/data/${currentLang === 'tr' ? 'tr_TR' : 'en_US'}/champion/${champId}.json`);
+        const data = await res.json();
+        const champData = data.data[champId];
+        if (!champData || !champData.skins || champData.skins.length <= 1) return;
+
+        const validSkins = champData.skins.filter(s => {
+            if (s.num === 0) return false;
+            const name = s.name.toLowerCase();
+            if (name === 'default' || name === champData.name.toLowerCase()) return false;
+            if (name.includes('(') && name.includes(')')) return false;
+            if (name.includes('traditional') || name.includes('legacy') || name.includes('eski')) return false;
+            if (name.includes(' rengi') || name.includes(' chroma') || name.endsWith(' rengi')) return false;
+            return true;
+        });
+        if (validSkins.length === 0) return;
+
+        const premiumKeywords = ['gece', 'şafak', 'nightbringer', 'dawnbringer', 'project', 'pulsefire', 'yıldız muhafızı', 'star guardian', 'ruh çiçeği', 'spirit blossom', 'high noon', 'kovboy', 'dark star', 'kara yıldız', 'kraliyet', 'god', 'tanrı', 'mecha', 'dragon', 'ejder', 'battle', 'savaş', 'kanlı ay', 'blood moon', 'kristal gül', 'coven', 'cadılar meclisi', 'empyrean', 'sonsuz karanlık', 'elementalist', 'dj', 'gun goddess', 'kod adı', 'prestij', 'prestige', 'kozmik', 'cosmic', 'efsanevi', 'legendary', 'destansı', 'epic', 'galaksiler', 'kda', 'true damage', 'heartsteel', 'ışık muhafızı', 'sentinel'];
+
+        let premiumSkins = validSkins.filter(s => premiumKeywords.some(kw => s.name.toLowerCase().includes(kw)));
+        if (premiumSkins.length === 0) {
+            premiumSkins = validSkins.slice(-Math.min(3, validSkins.length));
+        }
+        const chosenSkin = premiumSkins[Math.floor(Math.random() * premiumSkins.length)];
+        const splashImg = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champId}_${chosenSkin.num}.jpg`;
+
+        activeQueue.push({
+            title: chosenSkin.name,
+            img: splashImg,
+            champKey: champData.key,
+            skinNum: chosenSkin.num,
+            champId: champId,
+            champ: champData.name,
+            category: 'champion'
+        });
+        localStorage.setItem('skynix_activeQueue', JSON.stringify(activeQueue));
+        renderActiveLauncherWidget();
+        renderCustomSkins();
+        updateProfileUI();
+        // 2. OTOMATİK BAŞLAT & YENİDEN ENJEKTE:
+        // Eğer motor zaten çalışıyorsa (skinsActive === true), önce eski enjeksiyonu temizce DURDUR,
+        // yeni şampiyon skinini sıraya dahil ederek motoru YENİDEN BAŞLAT!
+        if (skinsActive) {
+            console.log('[AutoPick] Motor zaten çalışıyordu, yeni şampiyon skiniyle birlikte yeniden başlatılıyor...');
+            if (typeof stopActiveMods === 'function') {
+                await stopActiveMods();
+            }
+            setTimeout(() => {
+                if (typeof injectActiveMods === 'function') injectActiveMods();
+            }, 800);
+        } else if (!isInjectingMods && typeof injectActiveMods === 'function') {
+            setTimeout(() => {
+                injectActiveMods();
+            }, 600);
+        }
+    } catch (e) {
+        console.warn('[AutoPick] Hata:', e);
+    }
+}
         window.addEventListener('DOMContentLoaded', async () => {
             // Oturum Kontrolü
             const currentUserCheck = localStorage.getItem('skynix_current_user');
@@ -6243,7 +6399,7 @@ async function exportCustomSkin(idx) {
             } else {
                 if (ls) ls.style.display = 'none';
                 const user = getCurrentUser();
-                if (user) {
+                if (user && !localStorage.getItem('profileName')) {
                     localStorage.setItem('profileName', user.username);
                 }
             }
@@ -6255,12 +6411,6 @@ async function exportCustomSkin(idx) {
                     versionLabel.textContent = `v${version}`;
                 } catch (_) {}
             }
-            removeInterfaceEmoji();
-            new MutationObserver(mutations => {
-                mutations.forEach(mutation => mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE) removeInterfaceEmoji(node);
-                }));
-            }).observe(document.body, { childList: true, subtree: true });
             renderThemeGrid();
             await loadSavedSettings();
             initDragAndDrop();
@@ -6269,7 +6419,17 @@ async function exportCustomSkin(idx) {
 
             // Özel Skinler listesini ilk render et
             renderCustomSkins();
+            fetchChampions();
+            fetchOnlineStoreMods();
             renderActiveLauncherWidget();
+
+            if (window.electronAPI?.onLcuChampionPicked) {
+                window.electronAPI.onLcuChampionPicked((data) => {
+                    if (data && data.championId) {
+                        handleAutoPickedChampion(data.championId);
+                    }
+                });
+            }
 
             const savedNavPos = localStorage.getItem('navPos') || 'side';
             document.getElementById('navPosSelect').value = savedNavPos;
@@ -6322,7 +6482,7 @@ async function exportCustomSkin(idx) {
             if (startBtn) {
                 startBtn.disabled = false;
                 startBtn.style.opacity = '1';
-                startBtn.innerHTML = `<span>${currentLang === 'tr' ? '🚀 Şimdi İndir & Otomatik Güncelle' : '🚀 Download & Update Now'}</span>`;
+                startBtn.innerHTML = `<span>${currentLang === 'tr' ? 'Şimdi İndir & Otomatik Güncelle' : '🚀 Download & Update Now'}</span>`;
             }
             if (laterBtn) laterBtn.style.display = 'block';
 
@@ -6377,7 +6537,7 @@ async function exportCustomSkin(idx) {
                     if (!data) return;
                     if (bar && data.pct !== undefined) bar.style.width = data.pct + '%';
                     if (pct && data.pct !== undefined) pct.innerText = data.pct + '%';
-                    if (speedEl && data.speed) speedEl.innerText = `⚡ ${data.speed}`;
+                    if (speedEl && data.speed) speedEl.innerText = ` ${data.speed}`;
                     if (bytesEl && data.downloaded && data.total) bytesEl.innerText = `${data.downloaded} / ${data.total}`;
                     if (msg && data.msg) msg.innerText = data.msg;
                 });
@@ -6389,11 +6549,11 @@ async function exportCustomSkin(idx) {
                         downloadUrl: currentPendingUpdate.downloadUrl
                     });
                     if (res && res.success) {
-                        if (msg) msg.innerText = currentLang === 'tr' ? '✅ Kurulum başlatıldı. Uygulama yeniden başlatılıyor...' : '✅ Installer launched. App is restarting...';
-                        showToast(currentLang === 'tr' ? '✅ Güncelleme indirildi, kurulum başlatılıyor...' : '✅ Update downloaded, starting installer...');
+                        if (msg) msg.innerText = currentLang === 'tr' ? ' Kurulum başlatıldı. Uygulama yeniden başlatılıyor...' : ' Installer launched. App is restarting...';
+                        showToast(currentLang === 'tr' ? ' Güncelleme indirildi, kurulum başlatılıyor...' : ' Update downloaded, starting installer...');
                     } else {
                         isDownloadingUpdate = false;
-                        showToast('❌ ' + ((res && res.message) || (currentLang === 'tr' ? 'İndirme hatası' : 'Download error')));
+                        showToast(' ' + ((res && res.message) || (currentLang === 'tr' ? 'İndirme hatası' : 'Download error')));
                         if (startBtn) {
                             startBtn.disabled = false;
                             startBtn.style.opacity = '1';
@@ -6407,7 +6567,7 @@ async function exportCustomSkin(idx) {
                 }
             } catch (err) {
                 isDownloadingUpdate = false;
-                showToast('❌ ' + err.message);
+                showToast(' ' + err.message);
                 if (startBtn) {
                     startBtn.disabled = false;
                     startBtn.style.opacity = '1';
@@ -6530,36 +6690,6 @@ async function exportCustomSkin(idx) {
             });
         }
     }
-    // Kaynak dosyada eski UTF-8/ANSI dönüşümünden kalan metinleri ekranda düzelt.
-    (() => {
-        const broken = /[\u00C3\u00C2\u00C4\u00C5\u00C6\u00D0\u00E2\uFFFD]/;
-        function repair(value) {
-            let text = String(value ?? '');
-            for (let i = 0; i < 3 && broken.test(text); i++) {
-                try {
-                    const bytes = Uint8Array.from([...text].map(ch => ch.charCodeAt(0) & 255));
-                    const fixed = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-                    if (!fixed || fixed === text || fixed.includes('\uFFFD')) break;
-                    text = fixed;
-                } catch (_) { break; }
-            }
-            return text;
-        }
-        function repairVisibleText(root) {
-            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-            const nodes = [];
-            let node;
-            while ((node = walker.nextNode())) nodes.push(node);
-            for (const textNode of nodes) {
-                const fixed = repair(textNode.nodeValue);
-                if (fixed !== textNode.nodeValue) textNode.nodeValue = fixed;
-            }
-        }
-        const run = () => repairVisibleText(document.body);
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
-        else run();
-        new MutationObserver(() => repairVisibleText(document.body)).observe(document.body, { childList: true, subtree: true, characterData: true });
-    })();
 </script>
 <script>
 (() => {
@@ -6593,3 +6723,7 @@ async function exportCustomSkin(idx) {
 })();
 </script></body>
 </html>
+
+
+
+

@@ -9,8 +9,20 @@ const { exec, execFile, spawn } = require('child_process');
 // Windows bildirimleri uygulamayı Electron olarak değil Skynix Manager olarak
 // tanısın. Bu çağrı app.whenReady() öncesinde yapılmalıdır.
 app.setName('Skynix Manager');
+const singleInstanceLock = app.requestSingleInstanceLock();
+if (!singleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
 if (process.platform === 'win32') app.setAppUserModelId('com.skynix.manager');
-//           installed/, profiles/, userdata/ -> process.resourcesPath iÃƒÂ§i
+//           installed/, profiles/, userdata/ -> process.resourcesPath içi
 function getAppRoot() {
   return app.isPackaged ? process.resourcesPath : __dirname;
 }
@@ -34,11 +46,44 @@ function resolveModToolsPath() {
 
 let mainWindow;
 let activeModProcess = null;
-let preparedOverlayKey = null;
+let autoHiddenForGame = false;
+let overlayOperationInProgress = false;
+const preparedOverlayKeyFile = path.join(getUserDataDir(), "prepared-overlay-key.txt");
+let preparedOverlayKey = (() => { try { if (fs.existsSync(preparedOverlayKeyFile)) return fs.readFileSync(preparedOverlayKeyFile, "utf8").trim(); } catch (_) {} return null; })();
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKÃ„Â°N VERÃ„Â°TABANI OTOMATÃ„Â°K CACHE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+function cleanupLingeringToolProcesses() {
+  if (activeModProcess) return;
+  for (const name of ['mod-tools.exe', 'cslol-tools.exe']) {
+    execFile('taskkill', ['/F', '/IM', name, '/T'], { windowsHide: true }, () => {});
+  }
+}
+
+function stopActiveModProcess() {
+  const proc = activeModProcess;
+  activeModProcess = null;
+  if (!proc) return;
+  const pid = proc.pid;
+  try { proc.kill(); } catch (_) {}
+  if (process.platform === 'win32' && pid) {
+    execFile('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => {});
+  }
+}
+
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKÃƒâ€Ã‚°N VERÃƒâ€Ã‚°TABANI OTOMATÃƒâ€Ã‚°K CACHE Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 let cachedDbFolder = null;
 let cachedIndexData = null;
+const sourceCopyCachePath = path.join(getUserDataDir(), 'source-copy-cache.json');
+function getDirectorySignature(root) {
+  let count = 0; let newest = 0;
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      try { const stat = fs.statSync(full); newest = Math.max(newest, stat.mtimeMs); count++; if (entry.isDirectory()) walk(full); } catch (_) {}
+    }
+  };
+  try { walk(root); } catch (_) {}
+  return `${count}:${newest}`;
+}
 
 async function fetchOnlineIndexJson() {
   if (cachedIndexData) return cachedIndexData;
@@ -134,7 +179,7 @@ async function checkAndDownloadRequiredTools(onProgress) {
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ LOL GAME KLASÃƒâ€“RÃƒÅ“NÃƒÅ“ AKILLI TESPÃ„Â°T EDÃ„Â°CÃ„Â°
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ LOL GAME KLASÖRÜNÜ AKILLI TESPÃƒâ€Ã‚°T EDÃƒâ€Ã‚°CÃƒâ€Ã‚°
 function findGameDir(lolExePath) {
   if (lolExePath) {
     let p = lolExePath.trim();
@@ -213,7 +258,7 @@ function createWindow() {
   });
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ DISCORD RICH PRESENCE (RPC) INTEGRATION Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ DISCORD RICH PRESENCE (RPC) INTEGRATION Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 const clientId = '1534926430411030578';
 let rpc = null;
 
@@ -241,12 +286,12 @@ function updateDiscordPresence(state, details) {
   if (!rpc) return;
   try {
     rpc.setActivity({
-      state: state || 'Ana Ekran - BoÃ…Å¸ta',
+      state: state || 'Ana Ekran - Boşta',
       details: details || 'Skynix Manager NextGen',
       startTimestamp: rpcStartTime,
-      // Discord RPC gÃƒÂ¶rselleri URL deÃ„Å¸il, Developer Portal'daki asset anahtarÃ„Â±dÃ„Â±r.
+      // Discord RPC görselleri URL deÃƒâ€Ã…¸il, Developer Portal'daki asset anahtarÃƒâ€Ã‚±dÃƒâ€Ã‚±r.
       largeImageKey: 'skynix_logo',
-      largeImageText: 'Skynix Manager v2.0 Ã¢â‚¬Â¢ NextGen',
+      largeImageText: 'Skynix Manager v2.0 • NextGen',
       smallImageKey: 'skynix_logo',
       smallImageText: 'Skynix Manager',
       buttons: [
@@ -263,21 +308,22 @@ ipcMain.on('update-presence', (event, data) => {
   updateDiscordPresence(data.state, data.details);
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ DISCORD OAUTH2 GÃ„Â°RÃ„Â°Ã…Â AKIÃ…ÂI Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-// Ã¢Å¡Â Ã¯Â¸Â Kendi Discord OAuth App bilgilerinizi girin:
-// https://discord.com/developers/applications adresinden app oluÃ…Å¸turun
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ DISCORD OAUTH2 GÃƒâ€Ã‚°RÃƒâ€Ã‚°Ãƒâ€¦Ã‚ AKIÃƒâ€¦Ã‚I Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
+// Ãƒ¢Ã…¡Ã‚ Ãƒ¯Ã‚¸Ã‚ Kendi Discord OAuth App bilgilerinizi girin:
+// https://discord.com/developers/applications adresinden app oluşturun
 const DISCORD_OAUTH_CLIENT_ID = process.env.DISCORD_OAUTH_CLIENT_ID || localSecrets.discordClientId || '';
 const DISCORD_OAUTH_CLIENT_SECRET = process.env.DISCORD_OAUTH_CLIENT_SECRET || localSecrets.discordClientSecret || '';
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || localSecrets.discordGuildId || ''; // discord.gg/2cTNwPWTeE sunucu ID'si
 const DISCORD_ADMIN_ROLE_NAME = 'Herobrine'; // Bu role sahip olanlar Admin olur
 const OAUTH_REDIRECT_PORT = 47225;
 const OAUTH_REDIRECT_URI = `http://localhost:${OAUTH_REDIRECT_PORT}/callback`;
+const DISCORD_AUTH_SERVER_URL = 'https://skynix-auth-server.onrender.com';
 
 let discordOAuthWindow = null;
 
-// Electron'un bazÃ„Â± Windows kurulumlarÃ„Â±nda global fetch Discord TLS baÃ„Å¸lantÃ„Â±sÃ„Â±nÃ„Â±
-// "fetch failed" ile kesebiliyor. OAuth istekleri iÃƒÂ§in yerleÃ…Å¸ik https istemcisini
-// kullanarak daha gÃƒÂ¼venilir bir yedek baÃ„Å¸lantÃ„Â± saÃ„Å¸la.
+// Electron'un bazÃƒâ€Ã‚± Windows kurulumlarÃƒâ€Ã‚±nda global fetch Discord TLS baÃƒâ€Ã…¸lantÃƒâ€Ã‚±sÃƒâ€Ã‚±nÃƒâ€Ã‚±
+// "fetch failed" ile kesebiliyor. OAuth istekleri için yerleşik https istemcisini
+// kullanarak daha güvenilir bir yedek baÃƒâ€Ã…¸lantÃƒâ€Ã‚± saÃƒâ€Ã…¸la.
 function discordApiRequest(url, options = {}) {
   return new Promise((resolve, reject) => {
     const https = require('https');
@@ -305,9 +351,40 @@ function discordApiRequest(url, options = {}) {
   });
 }
 
+async function loginViaRemoteAuth() {
+  const state = require('crypto').randomBytes(24).toString('hex');
+  const startUrl = `${DISCORD_AUTH_SERVER_URL}/oauth/start?state=${encodeURIComponent(state)}`;
+  shell.openExternal(startUrl);
+
+  const deadline = Date.now() + 120000;
+  while (Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch(`${DISCORD_AUTH_SERVER_URL}/oauth/poll?state=${encodeURIComponent(state)}`, { cache: 'no-store' });
+      if (!response.ok) continue;
+      const result = await response.json();
+      if (result.pending) continue;
+      if (!result.success) return result;
+      const user = result.user || {};
+      const isAdmin = user.isAdmin === true;
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          globalName: user.global_name || user.globalName || user.username,
+          avatar: user.avatar ? (String(user.avatar).startsWith('http') ? user.avatar : `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`) : `https://cdn.discordapp.com/embed/avatars/0.png`,
+          isAdmin
+        }
+      };
+    } catch (_) {}
+  }
+  return { success: false, error: 'Zaman aşımı. Lütfen tekrar deneyin.' };
+}
 ipcMain.handle('discord-oauth-login', async () => {
+  if (DISCORD_AUTH_SERVER_URL) return loginViaRemoteAuth();
   return new Promise((resolve) => {
-    // Ãƒâ€“nceki pencereyi kapat
+    // Önceki pencereyi kapat
     if (discordOAuthWindow && !discordOAuthWindow.isDestroyed()) {
       discordOAuthWindow.close();
     }
@@ -315,7 +392,7 @@ ipcMain.handle('discord-oauth-login', async () => {
     const scopes = ['identify', 'guilds', 'guilds.members.read'];
     const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${DISCORD_OAUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(OAUTH_REDIRECT_URI)}&response_type=code&scope=${scopes.join('%20')}`;
 
-    // KÃƒÂ¼ÃƒÂ§ÃƒÂ¼k bir HTTP server aÃƒÂ§ redirect iÃƒÂ§in
+    // Küçük bir HTTP server aç redirect için
     const http = require('http');
     const server = http.createServer(async (req, res) => {
       if (!req.url.startsWith('/callback')) return;
@@ -324,19 +401,19 @@ ipcMain.handle('discord-oauth-login', async () => {
       const code = urlObj.searchParams.get('code');
       const errParam = urlObj.searchParams.get('error');
 
-      // TarayÃ„Â±cÃ„Â±ya baÃ…Å¸arÃ„Â± sayfasÃ„Â± gÃƒÂ¶ster
+      // TarayÃƒâ€Ã‚±cÃƒâ€Ã‚±ya baÃƒâ€¦Ã…¸arÃƒâ€Ã‚± sayfasÃƒâ€Ã‚± göster
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`<html><body style="background:#020305;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><div style="font-size:48px;margin-bottom:16px;">${errParam ? '❌' : '✅'}</div><div style="font-size:20px;font-weight:800;">${errParam ? 'Giriş İptal Edildi' : 'Giriş Başarılı!'}</div><div style="font-size:13px;color:#64748b;margin-top:8px;">Bu pencereyi kapatabilirsiniz.</div></div></body></html>`);
+      res.end(`<html><body style="background:#020305;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><div style="text-align:center;"><div style="font-size:48px;margin-bottom:16px;">${errParam ? 'âŒ' : '✅'}</div><div style="font-size:20px;font-weight:800;">${errParam ? 'Giriş İptal Edildi' : 'Giriş Başarılı!'}</div><div style="font-size:13px;color:#64748b;margin-top:8px;">Bu pencereyi kapatabilirsiniz.</div></div></body></html>`);
 
       server.close();
       if (discordOAuthWindow && !discordOAuthWindow.isDestroyed()) discordOAuthWindow.close();
 
       if (errParam || !code) {
-        return resolve({ success: false, error: 'GiriÃ…Å¸ iptal edildi.' });
+        return resolve({ success: false, error: 'Giriş iptal edildi.' });
       }
 
       try {
-        // Code Ã¢â€ â€™ Token exchange
+        // Code Ãƒ¢Ã¢â‚¬ ’ Token exchange
         const tokenRes = await discordApiRequest('https://discord.com/api/oauth2/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -351,18 +428,18 @@ ipcMain.handle('discord-oauth-login', async () => {
         const tokenData = tokenRes.data;
 
         if (!tokenData.access_token) {
-          return resolve({ success: false, error: 'Token alÃ„Â±namadÃ„Â±. Client Secret\'i kontrol et!' });
+          return resolve({ success: false, error: 'Token alÃƒâ€Ã‚±namadÃƒâ€Ã‚±. Client Secret\'i kontrol et!' });
         }
 
         const accessToken = tokenData.access_token;
 
-        // KullanÃ„Â±cÃ„Â± bilgilerini al
+        // KullanÃƒâ€Ã‚±cÃƒâ€Ã‚± bilgilerini al
         const userRes = await discordApiRequest('https://discord.com/api/users/@me', {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
         const userData = userRes.data;
 
-        // Guild membership kontrolÃƒÂ¼
+        // Guild membership kontrolü
         const memberRes = await discordApiRequest(`https://discord.com/api/users/@me/guilds/${DISCORD_GUILD_ID}/member`, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
@@ -370,34 +447,34 @@ ipcMain.handle('discord-oauth-login', async () => {
         if (!memberRes.ok) {
           return resolve({
             success: false,
-            error: `Skynix Discord sunucusunun ÃƒÂ¼yesi deÃ„Å¸ilsin!\ndiscord.gg/2cTNwPWTeE adresinden sunucuya katÃ„Â±l ve ÃƒÅ“ye rolÃƒÂ¼nÃƒÂ¼ al.`
+            error: `Skynix Discord sunucusunun üyesi deÃƒâ€Ã…¸ilsin!\ndiscord.gg/2cTNwPWTeE adresinden sunucuya katÃƒâ€Ã‚±l ve Üye rolünü al.`
           });
         }
 
         const memberData = memberRes.data;
         const roleNames = (memberData.roles || []).map(r => r.toString());
 
-        // Rol listesini isimle almak iÃƒÂ§in guild roles endpoint'e ihtiyaÃƒÂ§ var
-        // KullanÃ„Â±cÃ„Â± adÃ„Â±yla Herobrine kontrolÃƒÂ¼ yapÃ„Â±yoruz
+        // Rol listesini isimle almak için guild roles endpoint'e ihtiyaç var
+        // KullanÃƒâ€Ã‚±cÃƒâ€Ã‚± adÃƒâ€Ã‚±yla Herobrine kontrolü yapÃƒâ€Ã‚±yoruz
         const username = userData.username || '';
         const globalName = userData.global_name || '';
         const isAdmin = username.toLowerCase() === 'herobrine' ||
                         globalName.toLowerCase() === 'herobrine' ||
                         (memberData.nick || '').toLowerCase() === 'herobrine' ||
-                        (memberData.roles || []).length > 0; // ÃƒÅ“ye rolÃƒÂ¼ varsa => eriÃ…Å¸im var
+                        (memberData.roles || []).length > 0; // Üye rolü varsa => erişim var
 
-        // Sadece Herobrine kullanÃ„Â±cÃ„Â± adÃ„Â±na admin ver
+        // Sadece Herobrine kullanÃƒâ€Ã‚±cÃƒâ€Ã‚± adÃƒâ€Ã‚±na admin ver
         const isHerobrineAdmin = username.toLowerCase().includes('herobrine') ||
                                   globalName.toLowerCase().includes('herobrine') ||
                                   (memberData.nick || '').toLowerCase().includes('herobrine');
 
-        // Rol var mÃ„Â± kontrolÃƒÂ¼ (sadece @everyone olmayan bir rol Ã¢â€ â€™ ÃƒÅ“ye rolÃƒÂ¼ demek)
+        // Rol var mÃƒâ€Ã‚± kontrolü (sadece @everyone olmayan bir rol Ãƒ¢Ã¢â‚¬ ’ Üye rolü demek)
         const hasMemberRole = (memberData.roles || []).length > 0;
 
         if (!hasMemberRole) {
           return resolve({
             success: false,
-            error: `Sunucu ÃƒÂ¼yesisin ama henÃƒÂ¼z ÃƒÅ“ye rolÃƒÂ¼nÃƒÂ¼ almamÃ„Â±Ã…Å¸sÃ„Â±n!\nSunucu kurallarÃ„Â±nÃ„Â± kabul ederek ÃƒÅ“ye rolÃƒÂ¼nÃƒÂ¼ al.`
+            error: `Sunucu üyesisin ama henüz Üye rolünü almamÃƒâ€Ã‚±Ãƒâ€¦Ã…¸sÃƒâ€Ã‚±n!\nSunucu kurallarÃƒâ€Ã‚±nÃƒâ€Ã‚± kabul ederek Üye rolünü al.`
           });
         }
 
@@ -417,7 +494,7 @@ ipcMain.handle('discord-oauth-login', async () => {
 
 
       } catch (err) {
-        resolve({ success: false, error: 'BaÃ„Å¸lantÃ„Â± hatasÃ„Â±.' });
+        resolve({ success: false, error: 'BaÃƒâ€Ã…¸lantÃƒâ€Ã‚± hatasÃƒâ€Ã‚±.' });
         resolve({ success: false, error: 'Baglanti hatasi.' });
       }
     });
@@ -449,6 +526,11 @@ function resolveAppIcon() {
 
 function showSystemNotification(title, body) {
   try {
+    // SADECE UYGULAMA TEPSİDEYKEN (Simge durumunda veya gizlenmişken) bildirim gönder!
+    if (mainWindow && mainWindow.isVisible() && !mainWindow.isMinimized()) {
+      return; // Kullanıcı zaten uygulamanın açık ekranına bakıyorsa Windows bildirimi gösterme
+    }
+
     const icon = resolveAppIcon();
     if (Notification.isSupported()) {
       const notif = new Notification({
@@ -505,10 +587,7 @@ function updateTrayMenu() {
       label: isTr ? 'Skinleri Durdur' : 'Stop Skins',
       enabled: isSkinsRunning,
       click: () => {
-        if (activeModProcess) {
-          try { activeModProcess.kill(); } catch (e) {}
-          activeModProcess = null;
-        }
+        stopActiveModProcess();
         isSkinsRunning = false;
         updateTrayMenu();
         if (mainWindow && !mainWindow.isDestroyed()) {
@@ -521,10 +600,7 @@ function updateTrayMenu() {
       label: isTr ? 'Tamamen Kapat' : 'Quit Skynix Manager',
       click: () => {
         isQuittingApp = true;
-        if (activeModProcess) {
-          try { activeModProcess.kill(); } catch (e) {}
-          activeModProcess = null;
-        }
+        stopActiveModProcess();
         app.quit();
       }
     }
@@ -553,6 +629,7 @@ function createTray() {
 }
 
 app.whenReady().then(async () => {
+  if (!singleInstanceLock) return;
   // Şampiyon kütüphanesinden gelen varsayılan paketler için ayrı alan.
   // Böylece normal installed/ klasörüyle karışmaz ve cache temizliği bunu da
   // güvenli biçimde silebilir.
@@ -565,41 +642,180 @@ app.whenReady().then(async () => {
   createTray();
 });
 
-app.on('before-quit', () => { isQuittingApp = true; });
+app.on('before-quit', () => { isQuittingApp = true; stopActiveModProcess(); });
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin' && isQuittingApp) app.quit();
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ GERÃƒâ€¡EK ZAMANLI LOL DURUMU KONTROLU VE IN-GAME OPTÃ„Â°MÃ„Â°ZASYON Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ GERÇEK ZAMANLI LOL DURUMU KONTROLU VE IN-GAME OPTÃƒâ€Ã‚°MÃƒâ€Ã‚°ZASYON Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 function checkLolProcessStatus() {
-  exec('tasklist /FI "IMAGENAME eq League of Legends.exe" /NH', (err, stdout) => {
-    const isGameRunning = !err && stdout && stdout.toLowerCase().includes('league of legends.exe');
-    if (isGameRunning !== isGameActive) {
-      isGameActive = isGameRunning;
+  execFile('tasklist', ['/FO', 'CSV', '/NH'], { windowsHide: true }, (err, stdout) => {
+    if (err || !stdout) return;
+    const lowerOut = String(stdout).toLowerCase();
+    const isActualMatchRunning = lowerOut.includes('"league of legends.exe"') || lowerOut.includes('"lol.exe"');
+    const isClientRunning = lowerOut.includes('"leagueclient.exe"') || lowerOut.includes('"leagueclientux.exe"');
+
+    if (isActualMatchRunning !== isGameActive) {
+      isGameActive = isActualMatchRunning;
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('in-game-optimization', isGameRunning);
+        mainWindow.webContents.send('in-game-optimization', isActualMatchRunning);
+        if (isActualMatchRunning) {
+          // LoL maçı başladığında (lol.exe veya League of Legends.exe) pencereyi tepsiye gizle
+          autoHiddenForGame = true;
+          if (mainWindow.webContents && mainWindow.webContents.setBackgroundThrottling) {
+            mainWindow.webContents.setBackgroundThrottling(true);
+          }
+          mainWindow.hide();
+        } else {
+          // LoL maçı bittiğinde (lol.exe kapandığında) pencereyi tepsiden aç, full screen / maximize yap ve öne getir
+          autoHiddenForGame = false;
+          if (mainWindow.webContents && mainWindow.webContents.setBackgroundThrottling) {
+            mainWindow.webContents.setBackgroundThrottling(false);
+          }
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.maximize();
+          mainWindow.focus();
+          mainWindow.setAlwaysOnTop(true);
+          setTimeout(() => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.setAlwaysOnTop(false);
+            }
+          }, 1000);
+        }
       }
     }
-    if (isGameRunning) {
-      sendLolStatus(true);
-    } else {
-      exec('tasklist /FI "IMAGENAME eq LeagueClient.exe" /NH', (err2, stdout2) => {
-        const isClientRunning = !err2 && stdout2 && stdout2.toLowerCase().includes('leagueclient.exe');
-        sendLolStatus(isClientRunning);
-      });
-    }
+    sendLolStatus(isActualMatchRunning || isClientRunning);
   });
 }
 
+// ════════ LCU CHAMPION SELECT AUTO-DETECTION ════════
+const https = require('https');
+let lastPickedChampionId = null;
+let currentLcuCredentials = null;
+const insecureHttpsAgent = new https.Agent({ rejectUnauthorized: false });
+
+function findLcuLockfile() {
+  const candidateDirs = [
+    'C:\\Riot Games\\League of Legends',
+    'D:\\Riot Games\\League of Legends',
+    'E:\\Riot Games\\League of Legends',
+    'W:\\Riot Games\\League of Legends',
+    path.dirname(findGameDir())
+  ];
+  for (const dir of candidateDirs) {
+    try {
+      const lf = path.join(dir, 'lockfile');
+      if (fs.existsSync(lf)) return lf;
+    } catch (_) {}
+  }
+  return null;
+}
+
+function readLcuCredentials() {
+  const lf = findLcuLockfile();
+  if (!lf) return null;
+  try {
+    const fd = fs.openSync(lf, 'r');
+    const buffer = Buffer.alloc(512);
+    const bytesRead = fs.readSync(fd, buffer, 0, 512, 0);
+    fs.closeSync(fd);
+    const content = buffer.toString('utf8', 0, bytesRead);
+    const parts = content.split(':');
+    if (parts.length >= 5) {
+      return {
+        port: parseInt(parts[2], 10),
+        password: parts[3],
+        authHeader: 'Basic ' + Buffer.from('riot:' + parts[3]).toString('base64')
+      };
+    }
+  } catch (_) {}
+  return null;
+}
+
+function checkChampSelect() {
+  if (isGameActive) return;
+  const creds = readLcuCredentials();
+  if (!creds || !creds.port) return;
+
+  const options = {
+    hostname: '127.0.0.1',
+    port: creds.port,
+    path: '/lol-champ-select/v1/session',
+    method: 'GET',
+    headers: { 'Authorization': creds.authHeader },
+    agent: insecureHttpsAgent,
+    timeout: 1500
+  };
+
+  const req = https.request(options, (res) => {
+    if (res.statusCode !== 200) return;
+    let rawData = '';
+    res.on('data', (chunk) => { rawData += chunk; });
+    res.on('end', () => {
+      try {
+        const session = JSON.parse(rawData);
+        const localCellId = session.localPlayerCellId;
+        // Sadece şampiyon KİLİTLENDİĞİNDE (completed === true veya myTeam'de kilitli şampiyon) tetikle!
+        // Önizleme / fareyle üzerine gelip gösterme durumlarını (hover / intent) yoksay.
+        let isLockedIn = false;
+
+        if (Array.isArray(session.actions)) {
+          for (const group of session.actions) {
+            for (const action of group) {
+              if (action.actorCellId === localCellId && action.type === 'pick') {
+                if (action.completed && action.championId > 0) {
+                  myChampionId = action.championId;
+                  isLockedIn = true;
+                }
+              }
+            }
+          }
+        }
+
+        // ARAM, Blind Pick veya actions tamamlanmış durumlar için myTeam kontrolü
+        if (!isLockedIn && Array.isArray(session.myTeam)) {
+          const me = session.myTeam.find(p => p.cellId === localCellId);
+          // Eğer me.championId varsa ve actions içinde devam eden bir pick yoksa kilitlenmiş kabul et
+          if (me && me.championId > 0) {
+            const hasActivePickAction = Array.isArray(session.actions) && session.actions.some(group => 
+              group.some(action => action.actorCellId === localCellId && action.type === 'pick' && !action.completed)
+            );
+            if (!hasActivePickAction) {
+              myChampionId = me.championId;
+              isLockedIn = true;
+            }
+          }
+        }
+
+        if (isLockedIn && myChampionId > 0 && myChampionId !== lastPickedChampionId) {
+          lastPickedChampionId = myChampionId;
+          console.log(`[LCU] Şampiyon Kilitlendi / Seçim Onaylandı (ID: ${myChampionId})`);
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('lcu-champion-picked', { championId: myChampionId });
+          }
+        } else if (!session.myTeam || session.myTeam.length === 0) {
+          // Lobi bittiğinde veya seçimden çıkıldığında sıfırla
+          lastPickedChampionId = null;
+        }
+      } catch (_) {}
+    });
+  });
+  req.on('error', () => {});
+  req.end();
+}
+
+setInterval(checkChampSelect, 1500);
 function sendLolStatus(isRunning) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('lol-status-change', isRunning);
   }
 }
 
-setInterval(checkLolProcessStatus, 3000);
+setTimeout(checkLolProcessStatus, 250);
+setInterval(checkLolProcessStatus, 1000);
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ PENCERE EYLEMLERÃ„Â° (X Ã¢â€ â€™ TRAY'E GÃ„Â°ZLE) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ PENCERE EYLEMLERÃƒâ€Ã‚° (X Ãƒ¢Ã¢â‚¬ ’ TRAY'E GÃƒâ€Ã‚°ZLE) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.on('window-action', (event, action) => {
   if (!mainWindow) return;
   if (action === 'minimize') mainWindow.minimize();
@@ -621,18 +837,18 @@ ipcMain.on('show-skin-started-notification', (event, customLang) => {
 });
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ LOL EXE SEÃƒâ€¡Ã„Â°CÃ„Â° Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ LOL EXE SEÃƒÆ’Ã¢â‚¬¡Ãƒâ€Ã‚°CÃƒâ€Ã‚° Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('select-lol-exe', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
-    title: 'LeagueClient.exe veya League of Legends.exe SeÃƒÂ§',
+    title: 'LeagueClient.exe veya League of Legends.exe Seç',
     filters: [{ name: 'League of Legends', extensions: ['exe'] }]
   });
   return !result.canceled && result.filePaths.length > 0 ? result.filePaths[0] : null;
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ OTOMATIK INSTALLED KLASÃƒâ€“RÃƒÅ“NE KOPYALAYICI Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-// Ã¢â€â‚¬Ã¢â€â‚¬ OTOMATÃ„Â°K INSTALLED KLASÃƒâ€“RÃƒÅ“NE KOPYALAYICI VE FANTOME/ZIP AYIKLAYICI Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ OTOMATIK INSTALLED KLASÖRÜNE KOPYALAYICI Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ OTOMATÃƒâ€Ã‚°K INSTALLED KLASÖRÜNE KOPYALAYICI VE FANTOME/ZIP AYIKLAYICI Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('copy-to-installed', async (event, sourcePath) => {
   if (!sourcePath || !fs.existsSync(sourcePath)) return null;
   const installedDir = path.join(getUserDataDir(), 'installed');
@@ -661,7 +877,7 @@ ipcMain.handle('copy-to-installed', async (event, sourcePath) => {
           zip.extractAllTo(destDir, true);
           return destDir;
         } catch (zipErr) {
-          console.warn('[UnpackZip] Zip aÃƒÂ§ma hatasÃ„Â±, dosya olarak kopyalanÃ„Â±yor:', zipErr.message);
+          console.warn('[UnpackZip] Zip açma hatasÃƒâ€Ã‚±, dosya olarak kopyalanÃƒâ€Ã‚±yor:', zipErr.message);
           const fileDest = path.join(installedDir, rawName);
           if (sourcePath !== fileDest) fs.copyFileSync(sourcePath, fileDest);
           return fileDest;
@@ -673,37 +889,37 @@ ipcMain.handle('copy-to-installed', async (event, sourcePath) => {
       }
     }
   } catch (e) {
-    console.error("Kopyalama/AyÃ„Â±klama HatasÃ„Â±:", e);
+    console.error("Kopyalama/AyÃƒâ€Ã‚±klama HatasÃƒâ€Ã‚±:", e);
     return sourcePath;
   }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKÃ„Â°N DOSYASI SEÃƒâ€¡Ã„Â°CÃ„Â° (.fantome, .zip, .rar, .7z, .wad, .client) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKÃƒâ€Ã‚°N DOSYASI SEÃƒÆ’Ã¢â‚¬¡Ãƒâ€Ã‚°CÃƒâ€Ã‚° (.fantome, .zip, .rar, .7z, .wad, .client) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('select-skin-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile', 'multiSelections'],
-    title: 'Skin DosyalarÃ„Â±nÃ„Â± SeÃƒÂ§ (.fantome, .zip, .rar, .7z, .wad)',
+    title: 'Skin DosyalarÃƒâ€Ã‚±nÃƒâ€Ã‚± Seç (.fantome, .zip, .rar, .7z, .wad)',
     filters: [
       { name: 'LoL Skin Paketleri (*.fantome, *.zip, *.rar, *.7z, *.wad, *.client)', extensions: ['fantome', 'zip', 'rar', '7z', 'wad', 'client', 'raw'] },
-      { name: 'TÃƒÂ¼m Dosyalar (*.*)', extensions: ['*'] }
+      { name: 'Tüm Dosyalar (*.*)', extensions: ['*'] }
     ]
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   return result.filePaths;
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKÃ„Â°N KLASÃƒâ€“RÃƒÅ“ SEÃƒâ€¡Ã„Â°CÃ„Â° Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKÃƒâ€Ã‚°N KLASÖRÜ SEÃƒÆ’Ã¢â‚¬¡Ãƒâ€Ã‚°CÃƒâ€Ã‚° Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('select-skin-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
-    title: 'Skin KlasÃƒÂ¶rÃƒÂ¼nÃƒÂ¼ SeÃƒÂ§'
+    title: 'Skin Klasörünü Seç'
   });
   if (result.canceled || result.filePaths.length === 0) return null;
   return result.filePaths[0];
 });
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKÃ„Â°N DOSYASINI DIÃ…ÂA AKTAR (.fantome / .zip / KlasÃƒÂ¶r) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKÃƒâ€Ã‚°N DOSYASINI DIÃƒâ€¦Ã‚A AKTAR (.fantome / .zip / Klasör) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('export-skin-file', async (event, { sourcePath, defaultName }) => {
   try {
     let targetPath = sourcePath;
@@ -741,7 +957,7 @@ ipcMain.handle('export-skin-file', async (event, { sourcePath, defaultName }) =>
     }
 
     if (!targetPath || !fs.existsSync(targetPath)) {
-      return { success: false, message: 'Skin dosyasÃ„Â±/klasÃƒÂ¶rÃƒÂ¼ bilgisayarda bulunamadÃ„Â±.' };
+      return { success: false, message: 'Skin dosyasÃƒâ€Ã‚±/klasÃƒÆ’Ã‚¶rÃƒÆ’Ã‚¼ bilgisayarda bulunamadÃƒâ€Ã‚±.' };
     }
 
     const stat = fs.statSync(targetPath);
@@ -749,12 +965,12 @@ ipcMain.handle('export-skin-file', async (event, { sourcePath, defaultName }) =>
     const defaultFileName = cleanDefaultName.endsWith('.fantome') ? cleanDefaultName : `${cleanDefaultName}.fantome`;
 
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-      title: 'Skin DosyasÃ„Â±nÃ„Â± DÃ„Â±Ã…Å¸a Aktar (.fantome / .zip)',
+      title: 'Skin DosyasÃƒâ€Ã‚±nÃƒâ€Ã‚± DÃƒâ€Ã‚±Ãƒâ€¦Ã…¸a Aktar (.fantome / .zip)',
       defaultPath: defaultFileName,
       filters: [
         { name: 'Fantome Mod Paketi (*.fantome)', extensions: ['fantome'] },
-        { name: 'ZIP ArÃ…Å¸ivi (*.zip)', extensions: ['zip'] },
-        { name: 'TÃƒÂ¼m Dosyalar', extensions: ['*'] }
+        { name: 'ZIP Arşivi (*.zip)', extensions: ['zip'] },
+        { name: 'Tüm Dosyalar', extensions: ['*'] }
       ]
     });
     if (canceled || !filePath) return { canceled: true };
@@ -764,7 +980,17 @@ ipcMain.handle('export-skin-file', async (event, { sourcePath, defaultName }) =>
       if (ext === '.fantome' || ext === '.zip') {
         const AdmZip = require('adm-zip');
         const zip = new AdmZip();
-        zip.addLocalFolder(targetPath);
+        // A valid Fantome only needs canonical META/WAD trees.
+        // Raw source assets and duplicates made archives several times larger.
+        const wadDir = path.join(targetPath, 'WAD');
+        const metaDir = path.join(targetPath, 'META');
+        const hasWad = fs.existsSync(wadDir) && fs.statSync(wadDir).isDirectory();
+        if (hasWad) {
+          zip.addLocalFolder(wadDir, 'WAD');
+          if (fs.existsSync(metaDir) && fs.statSync(metaDir).isDirectory()) zip.addLocalFolder(metaDir, 'META');
+        } else {
+          zip.addLocalFolder(targetPath);
+        }
         zip.writeZip(filePath);
       } else {
         fs.cpSync(targetPath, filePath, { recursive: true });
@@ -779,11 +1005,11 @@ ipcMain.handle('export-skin-file', async (event, { sourcePath, defaultName }) =>
   }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKYFIXER / TOPAZ MOD FIXER INTEGRATION Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKYFIXER / TOPAZ MOD FIXER INTEGRATION Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('open-skyfixer', async (event, skinPath) => {
   try {
     if (!skinPath || typeof skinPath !== 'string' || !fs.existsSync(skinPath)) {
-      return { ok: false, error: 'Skin klasÃƒÂ¶rÃƒÂ¼ bulunamadÃ„Â±.' };
+      return { ok: false, error: 'Skin klasörü bulunamadÃƒâ€Ã‚±.' };
     }
     const candidates = [
       'W:\\Custom Skins Program\\cslol-go',
@@ -791,7 +1017,7 @@ ipcMain.handle('open-skyfixer', async (event, skinPath) => {
       path.join(getAppRoot(), 'tools', 'cslol-go')
     ];
     const root = candidates.find(p => fs.existsSync(path.join(p, 'ModLoader.exe')));
-    if (!root) return { ok: false, error: 'cslol-go / ModLoader.exe bulunamadÃ„Â±.' };
+    if (!root) return { ok: false, error: 'cslol-go / ModLoader.exe bulunamadÃƒâ€Ã‚±.' };
     const targetRoot = path.join(root, 'installed');
     fs.mkdirSync(targetRoot, { recursive: true });
     const name = path.basename(skinPath).replace(/\.(fantome|zip|rar|7z|raw)$/i, '').trim();
@@ -804,7 +1030,7 @@ ipcMain.handle('open-skyfixer', async (event, skinPath) => {
     child.unref();
     return { ok: true, path: target, message: 'Skyfixer açıldı. ModLoader içinden Skyfixer düğmesine basabilirsin.' };
   } catch (error) {
-    console.error('[Skyfixer] BaÃ…Å¸latma hatasÃ„Â±:', error);
+    console.error('[Skyfixer] Başlatma hatasÃƒâ€Ã‚±:', error);
     return { ok: false, error: error.message };
   }
 });
@@ -836,7 +1062,7 @@ function resolveWadMakePath() {
 
 function packFolderToWad(folderPath, targetWadPath) {
   const wadMake = resolveWadMakePath();
-  if (!wadMake) throw new Error('wad-make.exe aracÃ„Â± bulunamadÃ„Â±.');
+  if (!wadMake) throw new Error('wad-make.exe aracÃƒâ€Ã‚± bulunamadÃƒâ€Ã‚±.');
   const { execFileSync } = require('child_process');
   execFileSync(wadMake, [folderPath, targetWadPath], { windowsHide: true, stdio: 'ignore' });
   return targetWadPath;
@@ -918,10 +1144,10 @@ function resolveTopazFixerPath() {
 }
 
 // Skyfixer paneline gelen bazı Windows/CLI çıktıları UTF-8 yerine ANSI gibi
-// çözümlenebiliyor (Ã§, Ã¶, â€¦). Kullanıcıya göndermeden önce metni düzelt.
+// çözümlenebiliyor (ç, ö, …). Kullanıcıya göndermeden önce metni düzelt.
 function repairSkyfixerText(value) {
   let text = String(value ?? '');
-  const broken = /[ÃƒÃ‚Ã„Ã…Ã†ÃÃ¢ÄÅ]/;
+  const broken = /[ÃƒÆ’Ãƒâ€šÃƒâ€Ãƒâ€¦Ãƒâ€ ÃƒÃƒ¢Ã„Ã…]/;
   for (let i = 0; i < 3 && broken.test(text); i++) {
     try {
       const bytes = Uint8Array.from([...text].map(ch => ch.charCodeAt(0) & 255));
@@ -1093,7 +1319,7 @@ ipcMain.handle('run-topaz-skyfixer', async (event, skinPath) => {
   }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKYFIXER ONARIM DURUMU SORGULAYICI Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKYFIXER ONARIM DURUMU SORGULAYICI Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('get-skyfixer-status', async (event, skinPath) => {
   try {
     if (!skinPath || typeof skinPath !== 'string' || !fs.existsSync(skinPath)) return { isFixed: false };
@@ -1121,7 +1347,7 @@ ipcMain.handle('get-skyfixer-status', async (event, skinPath) => {
 });
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ MAÃ„ÂAZA MOD DOSYASI Ã„Â°NDÃ„Â°RÃ„Â°CÃ„Â° (ONLINE DISK SAVER) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ MAÃƒâ€Ã‚AZA MOD DOSYASI Ãƒâ€Ã‚°NDÃƒâ€Ã‚°RÃƒâ€Ã‚°CÃƒâ€Ã‚° (ONLINE DISK SAVER) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('download-store-mod-file', async (event, data) => {
   const { downloadUrl, title } = data;
   const installedDir = path.join(getUserDataDir(), 'store-installed');
@@ -1143,7 +1369,7 @@ ipcMain.handle('download-store-mod-file', async (event, data) => {
   }
 
   if (!downloadUrl) {
-    console.warn(`[StoreDownloader] ${title} iÃƒÂ§in indirme URL'si yok!`);
+    console.warn(`[StoreDownloader] ${title} için indirme URL'si yok!`);
     return null;
   }
 
@@ -1152,25 +1378,25 @@ ipcMain.handle('download-store-mod-file', async (event, data) => {
     const res = await fetch(downloadUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = Buffer.from(await res.arrayBuffer());
-    if (buffer.length < 1024) throw new Error('Ã„Â°ndirilen dosya boÃ…Å¸ veya geÃƒÂ§ersiz gÃƒÂ¶rÃƒÂ¼nÃƒÂ¼yor.');
-    // Uygulama import etmeye ÃƒÂ§alÃ„Â±Ã…Å¸Ã„Â±rken yarÃ„Â±m dosya gÃƒÂ¶rmesin.
+    if (buffer.length < 1024) throw new Error('Ãƒâ€Ã‚°ndirilen dosya boş veya geçersiz görünüyor.');
+    // Uygulama import etmeye ÃƒÆ’Ã‚§alÃƒâ€Ã‚±Ãƒâ€¦Ã…¸Ãƒâ€Ã‚±rken yarÃƒâ€Ã‚±m dosya görmesin.
     const tempPath = `${destPath}.download-${process.pid}-${Date.now()}`;
     fs.writeFileSync(tempPath, buffer);
     if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
     fs.renameSync(tempPath, destPath);
-    console.log(`[StoreDownloader] ${title} baÃ…Å¸arÃ„Â±yla indirildi: ${destPath}`);
+    console.log(`[StoreDownloader] ${title} baÃƒâ€¦Ã…¸arÃƒâ€Ã‚±yla indirildi: ${destPath}`);
     return destPath;
   } catch (err) {
-    console.error(`[StoreDownloader] Ã„Â°ndirme hatasÃ„Â± (${title}):`, err.message);
+    console.error(`[StoreDownloader] Ãƒâ€Ã‚°ndirme hatasÃƒâ€Ã‚± (${title}):`, err.message);
     return null;
   }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ VERÃ„Â°TABANI (SKYNIX DATABASE SKINS) KLASÃƒâ€“RÃƒÅ“ Ã„Â°Ã…ÂLEMLERÃ„Â° Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ VERÃƒâ€Ã‚°TABANI (SKYNIX DATABASE SKINS) KLASÖRÜ Ãƒâ€Ã‚°Ãƒâ€¦Ã‚LEMLERÃƒâ€Ã‚° Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('select-db-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
-    title: 'Skynix Data base Skins KlasÃƒÂ¶rÃƒÂ¼nÃƒÂ¼ SeÃƒÂ§'
+    title: 'Skynix Data base Skins Klasörünü Seç'
   });
   return !result.canceled && result.filePaths.length > 0 ? result.filePaths[0] : null;
 });
@@ -1180,13 +1406,13 @@ ipcMain.handle('auto-detect-db-folder', async () => {
   return cachedDbFolder;
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ DERÃ„Â°NLEMESÃ„Â°NE REKÃƒÅ“RSÃ„Â°F SKÃ„Â°N/CHROMA ZÃ„Â°P BULUCU Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ DERÃƒâ€Ã‚°NLEMESÃƒâ€Ã‚°NE REKÃƒÆ’Ã…â€œRSÃƒâ€Ã‚°F SKÃƒâ€Ã‚°N/CHROMA ZÃƒâ€Ã‚°P BULUCU Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 function findZipRecursively(dirPath, candidateTokens, validExts, maxDepth = 5) {
   if (!fs.existsSync(dirPath) || maxDepth <= 0) return null;
   try {
     const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
-    // A) Ãƒâ€“nce mevcut klasÃƒÂ¶rdeki dosyalarÃ„Â± kontrol et
+    // A) Önce mevcut klasördeki dosyalarÃƒâ€Ã‚± kontrol et
     for (const entry of entries) {
       if (!entry.isDirectory()) {
         const ext = path.extname(entry.name).toLowerCase();
@@ -1210,7 +1436,7 @@ function findZipRecursively(dirPath, candidateTokens, validExts, maxDepth = 5) {
       }
     }
 
-    // B) Alt klasÃƒÂ¶rleri tara (Aday numara iÃƒÂ§eren klasÃƒÂ¶rlere ÃƒÂ¶ncelik ver: ÃƒÂ¶rn: "2044", "2045")
+    // B) Alt klasörleri tara (Aday numara içeren klasörlere öncelik ver: örn: "2044", "2045")
     const subDirs = entries.filter(e => e.isDirectory());
     subDirs.sort((a, b) => {
       const aMatch = candidateTokens.some(t => a.name === String(t) || a.name.includes(String(t)));
@@ -1223,7 +1449,7 @@ function findZipRecursively(dirPath, candidateTokens, validExts, maxDepth = 5) {
       if (found) return found;
     }
   } catch (e) {
-    console.error('[DB] RekÃƒÂ¼rsif arama hatasÃ„Â±:', e);
+    console.error('[DB] Rekürsif arama hatasÃƒâ€Ã‚±:', e);
   }
   return null;
 }
@@ -1231,7 +1457,7 @@ function findZipRecursively(dirPath, candidateTokens, validExts, maxDepth = 5) {
 ipcMain.handle('find-db-skin-file', async (event, data) => {
   let { champKey, champId, skinNum, skinName } = data;
 
-  // "null" / "undefined" string korumasÃ„Â±
+  // "null" / "undefined" string korumasÃƒâ€Ã‚±
   if (!champKey || champKey === 'null' || champKey === 'undefined') champKey = null;
   if (!champId  || champId  === 'null' || champId  === 'undefined') champId  = null;
   if (skinNum === null || skinNum === undefined || skinNum === 'null') skinNum = 0;
@@ -1244,7 +1470,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
   const indexData = cachedIndexData;
   const validExts = ['.zip', '.fantome', '.wad.client', '.wad'];
 
-  // Ã…Âampiyon klasÃƒÂ¶r adaylarÃ„Â±: "238", "Zed" vb.
+  // Ãƒâ€¦Ã‚ampiyon klasör adaylarÃƒâ€Ã‚±: "238", "Zed" vb.
   const champDirs = dbFolder ? [
     champKey ? path.join(dbFolder, String(champKey)) : null,
     champId  ? path.join(dbFolder, champId) : null,
@@ -1252,7 +1478,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
     dbFolder
   ].filter(p => p && fs.existsSync(p)) : [];
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ CHROMA Ãƒâ€“NCELÃ„Â°KLÃ„Â° ARAMA (Chroma seÃƒÂ§ildiÃ„Å¸inde ana skini dÃƒÂ¶ndÃƒÂ¼rmeyi engeller) Ã¢â€â‚¬Ã¢â€â‚¬
+  // Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ CHROMA ÃƒÆ’Ã¢â‚¬â€œNCELÃƒâ€Ã‚°KLÃƒâ€Ã‚° ARAMA (Chroma seÃƒÆ’Ã‚§ildiÃƒâ€Ã…¸inde ana skini döndürmeyi engeller) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
   let chromaName = null;
   if (skinName && skinName.includes('(')) {
     const parts = skinName.split('(');
@@ -1271,7 +1497,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
     for (const dir of champDirs) {
       const chromaFile = findZipRecursively(dir, chromaTokens, validExts, 5);
       if (chromaFile && (chromaFile.toLowerCase().includes(cleanChroma) || chromaFile.toLowerCase().includes('chroma'))) {
-        console.log(`[DB] Chroma Ãƒâ€“zel DosyasÃ„Â± BULUNDU: ${chromaFile}`);
+        console.log(`[DB] Chroma Özel DosyasÃƒâ€Ã‚± BULUNDU: ${chromaFile}`);
         return chromaFile;
       }
     }
@@ -1279,7 +1505,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
 
   const candidateTokens = new Set();
 
-  // index.json ÃƒÂ¼zerinden eÃ…Å¸leÃ…Å¸en numaralarÃ„Â± al
+  // index.json üzerinden eşleşen numaralarÃƒâ€Ã‚± al
   if (indexData && indexData.champions && champId) {
     const champEntry = indexData.champions[champId] ||
       Object.values(Object.fromEntries(
@@ -1334,19 +1560,19 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
   }
 
   const tokenList = [...candidateTokens];
-  console.log(`[DB] ${champId} / "${skinName}" iÃƒÂ§in aranan tokenlar:`, tokenList);
+  console.log(`[DB] ${champId} / "${skinName}" için aranan tokenlar:`, tokenList);
 
   for (const dir of champDirs) {
     const foundFile = findZipRecursively(dir, tokenList, validExts, 5);
     if (foundFile) {
-      console.log(`[DB] RekÃƒÂ¼rsif Arama BULDU: ${foundFile}`);
+      console.log(`[DB] Rekürsif Arama BULDU: ${foundFile}`);
       return foundFile;
     }
   }
 
-  // Ã¢â€â‚¬Ã¢â€â‚¬ GITHUB OTOMATÃ„Â°K SKÃ„Â°N DOWNLOADER FALLBACK Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+  // Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ GITHUB OTOMATÃƒâ€Ã‚°K SKÃƒâ€Ã‚°N DOWNLOADER FALLBACK Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
   // Format: raw.githubusercontent.com/.../main/{champKey}/{champKey}{numPadded3}.zip
-  // Ãƒâ€“rnek: /517/517001.zip (Ã…Âampiyon 517, Skin 1)
+  // Örnek: /517/517001.zip (Ãƒâ€¦Ã‚ampiyon 517, Skin 1)
   if (champKey && skinNum !== undefined) {
     // Champion kütüphanesinden otomatik indirilen paketleri özel skinlerden
     // ayrı tut. Böylece installed/ yalnızca kullanıcının özel modları için kalır.
@@ -1355,14 +1581,14 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
 
     const RAW_BASE = 'https://raw.githubusercontent.com/Herobrine-2/skynix-database/main/Skins';
     
-    // Ã¢â€â‚¬Ã¢â€â‚¬ DoÃ„Å¸ru Skin NumarasÃ„Â±nÃ„Â± Bul Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-    // index.json'dan bu skin/chroma iÃƒÂ§in gerÃƒÂ§ek numarayÃ„Â± al
+    // Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ DoÃƒâ€Ã…¸ru Skin NumarasÃƒâ€Ã‚±nÃƒâ€Ã‚± Bul Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
+    // index.json'dan bu skin/chroma için gerçek numarayÃƒâ€Ã‚± al
     let resolvedNum = skinNum;
     let parentSkinNum = null;
     
-  // index.json ÃƒÂ¼zerinden chroma numarasÃ„Â±nÃ„Â± resolve et
+  // index.json üzerinden chroma numarasÃƒâ€Ã‚±nÃƒâ€Ã‚± resolve et
   if (indexData && indexData.champions) {
-    // champId ile ya da champKey ÃƒÂ¼zerinden champion entry bul
+    // champId ile ya da champKey üzerinden champion entry bul
     let champEntry = null;
     if (champId) {
       champEntry = indexData.champions[champId] ||
@@ -1370,7 +1596,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
           Object.keys(indexData.champions)[i].toLowerCase() === champId.toLowerCase()
         );
     }
-    // champId ile bulunamadÃ„Â±ysa champKey'e gÃƒÂ¶re ara (bazÃ„Â± kayÃ„Â±tlarda key sayÃ„Â±sal olabilir)
+    // champId ile bulunamadÃƒâ€Ã‚±ysa champKey'e göre ara (bazÃƒâ€Ã‚± kayÃƒâ€Ã‚±tlarda key sayÃƒâ€Ã‚±sal olabilir)
     if (!champEntry && champKey) {
       champEntry = Object.values(indexData.champions).find((entry, i) => {
         const k = Object.keys(indexData.champions)[i];
@@ -1379,7 +1605,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
     }
 
     if (champEntry) {
-      // Chroma ise Ã¢â€ â€™ chromas objesinden doÃ„Å¸ru numarayÃ„Â± bul
+      // Chroma ise Ãƒ¢Ã¢â‚¬ ’ chromas objesinden doÃƒâ€Ã…¸ru numarayÃƒâ€Ã‚± bul
       if (chromaName && champEntry.chromas) {
         outer:
         for (const [pNum, chromaGroup] of Object.entries(champEntry.chromas)) {
@@ -1396,7 +1622,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
           }
         }
       }
-      // Normal skin ise Ã¢â€ â€™ skins objesinden doÃ„Å¸rula
+      // Normal skin ise Ãƒ¢Ã¢â‚¬ ’ skins objesinden doÃƒâ€Ã…¸rula
       else if (champEntry.skins) {
         for (const [dbNum, dbName] of Object.entries(champEntry.skins)) {
           if (String(skinNum) === String(dbNum) ||
@@ -1408,7 +1634,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
       }
     }
   }
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Dosya AdÃ„Â±nÃ„Â± OluÃ…Å¸tur: {champKey}{num 3 haneli}.zip Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+    // Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ Dosya AdÃƒâ€Ã‚±nÃƒâ€Ã‚± Oluştur: {champKey}{num 3 haneli}.zip Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
     const numPadded = String(resolvedNum).padStart(3, '0');
     const fileName = `${champKey}${numPadded}.zip`;
     const fileKey = fileName.replace(/\.zip$/i, '');
@@ -1422,7 +1648,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
     }
     const localPath = path.join(championDefaultsDir, fileName);
 
-    // Ãƒâ€“nce local cache'e bak
+    // Önce local cache'e bak
     if (fs.existsSync(localPath) && fs.statSync(localPath).size > 0) {
       console.log(`[DB-AutoDownloader] Cache'de bulundu: ${localPath}`);
       return localPath;
@@ -1431,21 +1657,21 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
     // GitHub'dan direkt indir
     try {
       for (const fileUrl of fileUrls) {
-        console.log(`[DB-AutoDownloader] Ã„Â°ndiriliyor: ${fileUrl}`);
+        console.log(`[DB-AutoDownloader] Ãƒâ€Ã‚°ndiriliyor: ${fileUrl}`);
         const res = await fetch(fileUrl);
         if (res.ok) {
           const buffer = await res.arrayBuffer();
           fs.writeFileSync(localPath, Buffer.from(buffer));
-          console.log(`[DB-AutoDownloader] Ã„Â°ndirildi Ã¢â€ â€™ ${localPath}`);
+          console.log(`[DB-AutoDownloader] Ãƒâ€Ã‚°ndirildi Ãƒ¢Ã¢â‚¬ ’ ${localPath}`);
           return localPath;
         }
-        console.warn(`[DB-AutoDownloader] ${fileUrl} Ã¢â€ â€™ HTTP ${res.status}`);
+        console.warn(`[DB-AutoDownloader] ${fileUrl} Ãƒ¢Ã¢â‚¬ ’ HTTP ${res.status}`);
       }
     } catch (fetchErr) {
-      console.warn(`[DB-AutoDownloader] Fetch hatasÃ„Â±: ${fetchErr.message}`);
+      console.warn(`[DB-AutoDownloader] Fetch hatasÃƒâ€Ã‚±: ${fetchErr.message}`);
     }
 
-    // Alternatif: .fantome uzantÃ„Â±sÃ„Â± dene
+    // Alternatif: .fantome uzantÃƒâ€Ã‚±sÃƒâ€Ã‚± dene
     const fantomeName = `${champKey}${numPadded}.fantome`;
     const fantomeUrl = `${RAW_BASE}/${champKey}/${fantomeName}`;
     const fantomePath = path.join(championDefaultsDir, fantomeName);
@@ -1459,7 +1685,7 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
       if (res2.ok) {
         const buffer2 = await res2.arrayBuffer();
         fs.writeFileSync(fantomePath, Buffer.from(buffer2));
-        console.log(`[DB-AutoDownloader] .fantome indirildi Ã¢â€ â€™ ${fantomePath}`);
+        console.log(`[DB-AutoDownloader] .fantome indirildi Ãƒ¢Ã¢â‚¬ ’ ${fantomePath}`);
         return fantomePath;
       }
     } catch (e2) {
@@ -1467,23 +1693,23 @@ ipcMain.handle('find-db-skin-file', async (event, data) => {
     }
   }
 
-  console.warn(`[DB] ${champId} / "${skinName}" iÃƒÂ§in yerel diskte veya GitHub'da uygun dosya bulunamadÃ„Â±.`);
+  console.warn(`[DB] ${champId} / "${skinName}" için yerel diskte veya GitHub'da uygun dosya bulunamadÃƒâ€Ã‚±.`);
   return null;
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ GITHUB SKYNIX DATABASE SYNC (RAR Ã„Â°NDÃ„Â°R + AÃƒâ€¡) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ GITHUB SKYNIX DATABASE SYNC (RAR Ãƒâ€Ã‚°NDÃƒâ€Ã‚°R + AÇ) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('sync-db-from-github', async (event) => {
   try {
-    // 1. GitHub API'den release asset listesini ÃƒÂ§ek
-    event.sender.send('sync-db-progress', { step: 'api', pct: 5, msg: 'GitHub\'dan sÃƒÂ¼rÃƒÂ¼m bilgileri alÃ„Â±nÃ„Â±yor...' });
+    // 1. GitHub API'den release asset listesini çek
+    event.sender.send('sync-db-progress', { step: 'api', pct: 5, msg: 'GitHub\'dan sürüm bilgileri alÃƒâ€Ã‚±nÃƒâ€Ã‚±yor...' });
     const apiUrl = 'https://api.github.com/repos/Herobrine-2/skynix-database/releases';
     const apiRes = await fetch(apiUrl, {
       headers: { 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'Skynix-Manager' }
     });
-    if (!apiRes.ok) throw new Error(`GitHub API hatasÃ„Â±: ${apiRes.status}`);
+    if (!apiRes.ok) throw new Error(`GitHub API hatasÃƒâ€Ã‚±: ${apiRes.status}`);
     const releases = await apiRes.json();
 
-    // 2. Ã„Â°lk release'deki RAR veya ZIP asset'ini bul
+    // 2. Ãƒâ€Ã‚°lk release'deki RAR veya ZIP asset'ini bul
     let rarAsset = null;
     let zipAsset = null;
     for (const release of releases) {
@@ -1496,13 +1722,13 @@ ipcMain.handle('sync-db-from-github', async (event) => {
     }
 
     const targetAsset = rarAsset || zipAsset;
-    if (!targetAsset) throw new Error('GitHub release\'de uygun skin dosyasÃ„Â± bulunamadÃ„Â±!');
+    if (!targetAsset) throw new Error('GitHub release\'de uygun skin dosyasÃƒâ€Ã‚± bulunamadÃƒâ€Ã‚±!');
 
-    // 3. DosyayÃ„Â± indir
+    // 3. DosyayÃƒâ€Ã‚± indir
     const isRar = targetAsset.name.toLowerCase().endsWith('.rar');
     const tmpDir = os.tmpdir();
     const tmpFilePath = path.join(tmpDir, targetAsset.name);
-    event.sender.send('sync-db-progress', { step: 'download', pct: 10, msg: `Ã„Â°ndiriliyor: ${targetAsset.name} (${Math.round(targetAsset.size / 1024 / 1024)}MB)...` });
+    event.sender.send('sync-db-progress', { step: 'download', pct: 10, msg: `Ãƒâ€Ã‚°ndiriliyor: ${targetAsset.name} (${Math.round(targetAsset.size / 1024 / 1024)}MB)...` });
 
     const dlRes = await fetch(targetAsset.browser_download_url, { headers: { 'User-Agent': 'Skynix-Manager' } });
     if (!dlRes.ok) throw new Error(`Dosya indirilemedi: ${dlRes.status}`);
@@ -1517,18 +1743,18 @@ ipcMain.handle('sync-db-from-github', async (event) => {
       chunks.push(value);
       downloaded += value.length;
       const pct = Math.round(10 + (downloaded / totalSize) * 60);
-      event.sender.send('sync-db-progress', { step: 'download', pct, msg: `Ã„Â°ndiriliyor... %${Math.round(downloaded/totalSize*100)}` });
+      event.sender.send('sync-db-progress', { step: 'download', pct, msg: `Ãƒâ€Ã‚°ndiriliyor... %${Math.round(downloaded/totalSize*100)}` });
     }
     const fileBuffer = Buffer.concat(chunks);
     fs.writeFileSync(tmpFilePath, fileBuffer);
-    event.sender.send('sync-db-progress', { step: 'extract', pct: 72, msg: 'Dosya aÃƒÂ§Ã„Â±lÃ„Â±yor...' });
+    event.sender.send('sync-db-progress', { step: 'extract', pct: 72, msg: 'Dosya aÃƒÆ’Ã‚§Ãƒâ€Ã‚±lÃƒâ€Ã‚±yor...' });
 
-    // 4. Hedef klasÃƒÂ¶rÃƒÂ¼ hazÃ„Â±rla
+    // 4. Hedef klasörü hazÃƒâ€Ã‚±rla
     const destDir = path.join(getAppRoot(), 'Skynix Data base Skins');
     if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
 
     if (isRar) {
-      // node-unrar-js ile aÃƒÂ§
+      // node-unrar-js ile aç
       const { createExtractorFromData } = require('node-unrar-js');
       const extractor = await createExtractorFromData({ data: Uint8Array.from(fileBuffer) });
       const { files } = extractor.extract();
@@ -1541,20 +1767,20 @@ ipcMain.handle('sync-db-from-github', async (event) => {
         count++;
         if (count % 5 === 0) {
           const pct = Math.min(95, 72 + Math.round(count / 100 * 20));
-          event.sender.send('sync-db-progress', { step: 'extract', pct, msg: `AÃƒÂ§Ã„Â±lÃ„Â±yor: ${count} dosya...` });
+          event.sender.send('sync-db-progress', { step: 'extract', pct, msg: `AÃƒÆ’Ã‚§Ãƒâ€Ã‚±lÃƒâ€Ã‚±yor: ${count} dosya...` });
         }
       }
     } else {
-      // adm-zip ile aÃƒÂ§
+      // adm-zip ile aç
       const AdmZip = require('adm-zip');
       const zip = new AdmZip(tmpFilePath);
       zip.extractAllTo(destDir, true);
     }
 
-    // 5. Temizle ve cachedDbFolder gÃƒÂ¼ncelle
+    // 5. Temizle ve cachedDbFolder güncelle
     try { fs.unlinkSync(tmpFilePath); } catch (_) {}
     cachedDbFolder = destDir;
-    event.sender.send('sync-db-progress', { step: 'done', pct: 100, msg: 'Senkronizasyon tamamlandÃ„Â±! Ã¢Å“â€¦' });
+    event.sender.send('sync-db-progress', { step: 'done', pct: 100, msg: 'Senkronizasyon tamamlandÃƒâ€Ã‚±! ✅' });
     return { success: true, path: destDir };
   } catch (err) {
     console.error('[SyncDB] Hata:', err);
@@ -1563,7 +1789,7 @@ ipcMain.handle('sync-db-from-github', async (event) => {
   }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ OTOMATÃ„Â°K LOL TESPÃ„Â°TÃ„Â° Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ OTOMATÃƒâ€Ã‚°K LOL TESPÃƒâ€Ã‚°TÃƒâ€Ã‚° Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('auto-detect-lol', async () => {
   const knownExes = [
     'C:\\Riot Games\\League of Legends\\LeagueClient.exe',
@@ -1577,7 +1803,7 @@ ipcMain.handle('auto-detect-lol', async () => {
   return null;
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ INSTALLED KLASÃƒâ€“RÃƒÅ“NÃƒÅ“ TARA Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ INSTALLED KLASÖRÜNÜ TARA Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('scan-installed-skins', async () => {
   const installedDir = path.join(getUserDataDir(), 'installed');
   if (!fs.existsSync(installedDir)) {
@@ -1585,25 +1811,25 @@ ipcMain.handle('scan-installed-skins', async () => {
     return [];
   }
   const entries = fs.readdirSync(installedDir, { withFileTypes: true });
-  // Sadece klasÃƒÂ¶rleri dÃƒÂ¶ndÃƒÂ¼r (cslol formatÃ„Â±: META/WAD yapÃ„Â±sÃ„Â±)
+  // Sadece klasörleri döndür (cslol formatÃƒâ€Ã‚±: META/WAD yapÃƒâ€Ã‚±sÃƒâ€Ã‚±)
   return entries
     .map(f => ({
       title: f.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' '),
-      champ: 'YÃƒÂ¼klÃƒÂ¼ Mod',
+      champ: 'Yüklü Mod',
       path: path.join(installedDir, f.name),
       file: f.name,
       isDirectory: f.isDirectory()
     }));
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ OTOMATÃ„Â°K WAD/META DÃƒâ€“NÃƒÅ“Ã…ÂTÃƒÅ“RÃƒÅ“CÃƒÅ“ (HAM ASSET KLASÃƒâ€“RLERÃ„Â°NÃ„Â° WAD FORMATINA Ãƒâ€¡EVÃ„Â°RÃ„Â°R) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ OTOMATÃƒâ€Ã‚°K WAD/META DÃƒÆ’Ã¢â‚¬â€œNÃƒÆ’Ã…â€œÃƒâ€¦Ã‚TÃƒÆ’Ã…â€œRÃƒÆ’Ã…â€œCÃƒÆ’Ã…â€œ (HAM ASSET KLASÃƒÆ’Ã¢â‚¬â€œRLERÃƒâ€Ã‚°NÃƒâ€Ã‚° WAD FORMATINA ÃƒÆ’Ã¢â‚¬¡EVÃƒâ€Ã‚°RÃƒâ€Ã‚°R) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 async function ensureWadStructure(modFolderPath, gameDir, cliPath) {
   if (!modFolderPath || !fs.existsSync(modFolderPath) || !fs.statSync(modFolderPath).isDirectory()) return false;
 
   const metaDir = path.join(modFolderPath, 'META');
   const wadDir = path.join(modFolderPath, 'WAD');
 
-  // 1) EÃ„Å¸er WAD/ klasÃƒÂ¶rÃƒÂ¼ zaten var ve iÃƒÂ§inde en az bir .wad / .client dosyasÃ„Â± varsa
+  // 1) EÃƒâ€Ã…¸er WAD/ klasörü zaten var ve içinde en az bir .wad / .client dosyasÃƒâ€Ã‚± varsa
   if (fs.existsSync(wadDir)) {
     try {
       const wadFiles = fs.readdirSync(wadDir).filter(f => f.endsWith('.wad') || f.endsWith('.client') || f.includes('.wad.'));
@@ -1624,7 +1850,7 @@ async function ensureWadStructure(modFolderPath, gameDir, cliPath) {
     } catch (_) {}
   }
 
-  // 2) KlasÃƒÂ¶rÃƒÂ¼n HERHANGÃ„Â° BÃ„Â°R YERÃ„Â°NDE (kÃƒÂ¶k veya alt klasÃƒÂ¶rlerde) hazÃ„Â±r .wad / .client dosyasÃ„Â± varsa WAD/ iÃƒÂ§ine topla
+  // 2) Klasörün HERHANGÃƒâ€Ã‚° BÃƒâ€Ã‚°R YERÃƒâ€Ã‚°NDE (kök veya alt klasörlerde) hazÃƒâ€Ã‚±r .wad / .client dosyasÃƒâ€Ã‚± varsa WAD/ içine topla
   const findWadFilesRecursively = (dir) => {
     let results = [];
     if (!fs.existsSync(dir)) return results;
@@ -1666,8 +1892,8 @@ async function ensureWadStructure(modFolderPath, gameDir, cliPath) {
     return true;
   }
 
-  // 3) EÃ„ÂER HÃ„Â°Ãƒâ€¡ WAD DOSYASI YOKSA (HAM ASSET/DATA KLASÃƒâ€“RÃƒÅ“):
-  // mod-tools.exe import komutunu kullanarak ham assets dosyalarÃ„Â±nÃ„Â± otomatik WAD arÃ…Å¸ivine ÃƒÂ§evir!
+  // 3) EÃƒâ€Ã‚ER HÃƒâ€Ã‚°ÃƒÆ’Ã¢â‚¬¡ WAD DOSYASI YOKSA (HAM ASSET/DATA KLASÖRÜ):
+  // mod-tools.exe import komutunu kullanarak ham assets dosyalarÃƒâ€Ã‚±nÃƒâ€Ã‚± otomatik WAD arşivine çevir!
   if (cliPath && fs.existsSync(cliPath)) {
     const tempOutputDir = path.join(getUserDataDir(), 'temp_compiled_wad_' + Date.now());
     fs.mkdirSync(tempOutputDir, { recursive: true });
@@ -1706,10 +1932,10 @@ async function ensureWadStructure(modFolderPath, gameDir, cliPath) {
   return false;
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKIN DOSYASI VEYA KLASÃƒâ€“RÃƒÅ“NÃƒÅ“ INSTALLED'A Ã„Â°Ãƒâ€¡E AKTAR Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKIN DOSYASI VEYA KLASÖRÜNÜ INSTALLED'A Ãƒâ€Ã‚°ÃƒÆ’Ã¢â‚¬¡E AKTAR Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
   if (!sourcePath || !fs.existsSync(sourcePath)) {
-    return { success: false, message: 'Kaynak dosya/klasÃƒÂ¶r bulunamadÃ„Â±: ' + sourcePath };
+    return { success: false, message: 'Kaynak dosya/klasör bulunamadÃƒâ€Ã‚±: ' + sourcePath };
   }
 
   const primaryInstalledDir = path.join(getUserDataDir(), 'installed');
@@ -1719,33 +1945,25 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
   const cleanName = rawName.replace(/\.(fantome|zip|rar|7z|raw|wad|client)$/i, '').replace(/_/g, ' ').trim() || rawName;
   const targetDest = path.join(primaryInstalledDir, cleanName);
 
-  const candidateInstalledDirs = [
-    primaryInstalledDir,
-    path.join(getAppRoot(), 'installed'),
-    'W:\\Custom Skins Program\\cslol-manager\\installed',
-    path.join(getAppRoot(), '..', 'Skynix Manager', 'installed')
-  ].filter(d => {
-    try {
-      if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-      return true;
-    } catch (_) { return false; }
-  });
+  // Keep one canonical copy. Mirroring large skins into legacy folders caused
+  // long freezes and multiplied disk/network I/O.
+  const candidateInstalledDirs = [primaryInstalledDir];
 
   try {
     const stat = fs.statSync(sourcePath);
 
     // =========================================================================
-    // A) EÃ„ÂER GELEN BÃ„Â°R KLASÃƒâ€“R Ã„Â°SE (DIRECTORY)
+    // A) EÃƒâ€Ã‚ER GELEN BÃƒâ€Ã‚°R KLASÖR Ãƒâ€Ã‚°SE (DIRECTORY)
     // =========================================================================
     if (stat.isDirectory()) {
       if (sourcePath !== targetDest && !sourcePath.startsWith(primaryInstalledDir + path.sep)) {
         if (fs.existsSync(targetDest)) {
           fs.rmSync(targetDest, { recursive: true, force: true });
         }
-        fs.cpSync(sourcePath, targetDest, { recursive: true });
+        await fs.promises.cp(sourcePath, targetDest, { recursive: true });
       }
 
-      // Tekli iÃƒÂ§ iÃƒÂ§e klasÃƒÂ¶r varsa ÃƒÂ§Ã„Â±kar
+      // Tekli iç içe klasör varsa ÃƒÆ’Ã‚§Ãƒâ€Ã‚±kar
       try {
         let items = fs.readdirSync(targetDest);
         if (items.length === 1 && fs.statSync(path.join(targetDest, items[0])).isDirectory() && items[0] !== 'META' && items[0] !== 'WAD') {
@@ -1759,7 +1977,7 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
       } catch (_) {}
 
     // =========================================================================
-    // B) EÃ„ÂER GELEN BÃ„Â°R DOSYA Ã„Â°SE (FILE)
+    // B) EÃƒâ€Ã‚ER GELEN BÃƒâ€Ã‚°R DOSYA Ãƒâ€Ã‚°SE (FILE)
     // =========================================================================
     } else {
       const ext = path.extname(sourcePath).toLowerCase();
@@ -1772,7 +1990,7 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
         if (found) gameDir = found;
       }
 
-      // 1) Tek .wad / .client dosyasÃ„Â±
+      // 1) Tek .wad / .client dosyasÃƒâ€Ã‚±
       if (ext === '.wad' || ext === '.client' || rawName.endsWith('.wad.client')) {
         if (!fs.existsSync(targetDest)) fs.mkdirSync(targetDest, { recursive: true });
         const metaDir = path.join(targetDest, 'META');
@@ -1784,7 +2002,7 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
         const clientFileName = rawName.endsWith('.client') ? rawName : `${cleanName}.wad.client`;
         fs.copyFileSync(sourcePath, path.join(wadDir, clientFileName));
 
-      // 2) RAR veya 7Z arÃ…Å¸ivi
+      // 2) RAR veya 7Z arşivi
       } else if (ext === '.rar' || ext === '.7z') {
         const tempExtractDir = path.join(getUserDataDir(), 'temp_skin_extract_' + Date.now());
         fs.mkdirSync(tempExtractDir, { recursive: true });
@@ -1800,14 +2018,14 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
               fs.writeFileSync(outPath, Buffer.from(file.extraction));
             }
           } catch (rarErr) {
-            console.warn('[Import] RAR hatasÃ„Â±:', rarErr.message);
+            console.warn('[Import] RAR hatasÃƒâ€Ã‚±:', rarErr.message);
           }
         }
         if (fs.existsSync(targetDest)) fs.rmSync(targetDest, { recursive: true, force: true });
-        fs.cpSync(tempExtractDir, targetDest, { recursive: true });
+        await fs.promises.cp(tempExtractDir, targetDest, { recursive: true });
         try { fs.rmSync(tempExtractDir, { recursive: true, force: true }); } catch (_) {}
 
-      // 3) FANTOME veya ZIP arÃ…Å¸ivi
+      // 3) FANTOME veya ZIP arşivi
       } else {
         let modToolsSuccess = false;
         if (fs.existsSync(cliPath)) {
@@ -1837,7 +2055,7 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
     }
 
     // =========================================================================
-    // C) HER DURUMDA OTOMATÃ„Â°K WAD/META DÃƒâ€“NÃƒÅ“Ã…ÂTÃƒÅ“RÃƒÅ“CÃƒÅ“YÃƒÅ“ Ãƒâ€¡ALIÃ…ÂTIR
+    // C) HER DURUMDA OTOMATÃƒâ€Ã‚°K WAD/META DÃƒÆ’Ã¢â‚¬â€œNÃƒÆ’Ã…â€œÃƒâ€¦Ã‚TÃƒÆ’Ã…â€œRÃƒÆ’Ã…â€œCÃƒÆ’Ã…â€œYÃƒÆ’Ã…â€œ ÃƒÆ’Ã¢â‚¬¡ALIÃƒâ€¦Ã‚TIR
     // =========================================================================
     if (fs.existsSync(targetDest)) {
       let cliPath = resolveModToolsPath();
@@ -1852,18 +2070,6 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
       await ensureWadStructure(targetDest, gameDir, cliPath);
     }
 
-    // 6) TÃƒÂ¼m aday installed klasÃƒÂ¶rlerine senkronize et (cslol-manager dahil)
-    for (const candDir of candidateInstalledDirs) {
-      if (candDir === primaryInstalledDir) continue;
-      const candTarget = path.join(candDir, cleanName);
-      try {
-        if (fs.existsSync(candTarget)) fs.rmSync(candTarget, { recursive: true, force: true });
-        fs.cpSync(targetDest, candTarget, { recursive: true });
-      } catch (syncErr) {
-        console.warn('[ImportSync] Senkronizasyon uyarÃ„Â±sÃ„Â±:', syncErr.message);
-      }
-    }
-
     return { success: true, path: targetDest };
   } catch (e) {
     console.error('[ImportSkin] Hata:', e);
@@ -1871,7 +2077,7 @@ ipcMain.handle('import-skin-to-installed', async (event, sourcePath) => {
   }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKIN KLASÃƒâ€“RÃƒÅ“NDEN Ã…ÂAMPÃ„Â°YON TESPÃ„Â°TÃ„Â° (WAD & META DOKUMASI) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKIN KLASÖRÜNDEN Ãƒâ€¦Ã‚AMPÃƒâ€Ã‚°YON TESPÃƒâ€Ã‚°TÃƒâ€Ã‚° (WAD & META DOKUMASI) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('detect-skin-champ', async (event, skinPath) => {
   try {
     if (!skinPath) return null;
@@ -1884,7 +2090,7 @@ ipcMain.handle('detect-skin-champ', async (event, skinPath) => {
 
     if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) return null;
 
-    // 1) WAD klasÃƒÂ¶rÃƒÂ¼nÃƒÂ¼n iÃƒÂ§indeki .wad.client dosyalarÃ„Â±ndan Ã…Å¸ampiyon ismi oku
+    // 1) WAD klasörünün içindeki .wad.client dosyalarÃƒâ€Ã‚±ndan şampiyon ismi oku
     const wadDir = path.join(targetDir, 'WAD');
     if (fs.existsSync(wadDir)) {
       const wadFiles = fs.readdirSync(wadDir);
@@ -1896,7 +2102,7 @@ ipcMain.handle('detect-skin-champ', async (event, skinPath) => {
       }
     }
 
-    // 2) META/info.json dosyasÃ„Â±nÃ„Â± incele
+    // 2) META/info.json dosyasÃƒâ€Ã‚±nÃƒâ€Ã‚± incele
     const metaInfo = path.join(targetDir, 'META', 'info.json');
     if (fs.existsSync(metaInfo)) {
       try {
@@ -1914,7 +2120,7 @@ ipcMain.handle('detect-skin-champ', async (event, skinPath) => {
 });
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ INSTALLED TÃƒÅ“MÃƒÅ“NÃƒÅ“ SIFIRLA IPC Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ INSTALLED TÜMÜNÜ SIFIRLA IPC Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('clear-installed-skins', async () => {
   try {
     // Skin paketleri yalnızca installed/ altında tutulmuyor. Skyfixer'ın
@@ -1957,12 +2163,12 @@ ipcMain.handle('clear-installed-skins', async () => {
     } catch (_) {}
     return { success: true, count };
   } catch (e) {
-    console.error("Skin sÃ„Â±fÃ„Â±rlama hatasÃ„Â±:", e);
+    console.error("Skin sÃƒâ€Ã‚±fÃƒâ€Ã‚±rlama hatasÃƒâ€Ã‚±:", e);
     return { success: false, message: e.message };
   }
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ INSTALLED SÃ„Â°LÃ„Â°CÃ„Â° IPC (TAM TEMÃ„Â°ZLÃ„Â°K) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ INSTALLED SÃƒâ€Ã‚°LÃƒâ€Ã‚°CÃƒâ€Ã‚° IPC (TAM TEMÃƒâ€Ã‚°ZLÃƒâ€Ã‚°K) Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('delete-installed-skin', async (event, skinPath) => {
   try {
     let cleanName = '';
@@ -1982,7 +2188,7 @@ ipcMain.handle('delete-installed-skin', async (event, skinPath) => {
 
     let deleted = false;
 
-    // 1) DoÃ„Å¸rudan gelen yoldaki dosya/klasÃƒÂ¶rÃƒÂ¼ sil
+    // 1) DoÃƒâ€Ã…¸rudan gelen yoldaki dosya/klasörü sil
     if (skinPath && fs.existsSync(skinPath)) {
       const stat = fs.statSync(skinPath);
       if (stat.isDirectory()) {
@@ -1993,7 +2199,7 @@ ipcMain.handle('delete-installed-skin', async (event, skinPath) => {
       deleted = true;
     }
 
-    // 2) TÃƒÂ¼m installed dizinlerinde eÃ…Å¸leÃ…Å¸en isimdeki klasÃƒÂ¶r ve dosyalarÃ„Â± tamamen temizle
+    // 2) Tüm installed dizinlerinde eşleşen isimdeki klasör ve dosyalarÃƒâ€Ã‚± tamamen temizle
     if (cleanName) {
       const normalizedName = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, '');
       for (const dir of targetDirs) {
@@ -2037,25 +2243,28 @@ ipcMain.handle('delete-installed-skin', async (event, skinPath) => {
 
     return deleted;
   } catch (e) {
-    console.error("Dosya/KlasÃƒÂ¶r silme hatasÃ„Â±:", e);
+    console.error("Dosya/Klasör silme hatasÃƒâ€Ã‚±:", e);
     return false;
   }
 });
 
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ SKÃ„Â°NLERÃ„Â° DURDURMA IPC Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ SKÃƒâ€Ã‚°NLERÃƒâ€Ã‚° DURDURMA IPC Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('stop-cslol-skin', async () => {
-  if (activeModProcess) {
-    try { activeModProcess.kill(); } catch (e) {}
-    activeModProcess = null;
-  }
+  overlayOperationInProgress = false;
+  stopActiveModProcess();
   return { success: true };
 });
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ CANLI LOGLU VE GÃƒÅ“VENLÃ„Â° MOD MOTORU Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬ CANLI LOGLU VE GÃƒÆ’Ã…â€œVENLÃƒâ€Ã‚° MOD MOTORU Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬Ãƒ¢Ã¢â‚¬Ã¢â€š¬
 ipcMain.handle('run-cslol-skin', async (event, data) => {
+  if (overlayOperationInProgress) {
+    return { success: false, busy: true, message: 'Skin işlemi zaten devam ediyor.' };
+  }
+  overlayOperationInProgress = true;
   return new Promise(async (resolve) => {
+    const finish = (result) => { overlayOperationInProgress = false; resolve(result); };
     const { skinPath, lolExePath } = data;
 
     const sendLog = (msg) => {
@@ -2064,20 +2273,20 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
       }
     };
 
-    sendLog(`[BAÃ…ÂLATILIYOR] Skin Yolu: ${path.basename(skinPath)}`);
+    sendLog(`[START] Skin path: ${path.basename(skinPath)}`);
 
     let cliPath = resolveModToolsPath();
 
     if (!fs.existsSync(cliPath)) {
-      sendLog(`[HATA] tools/mod-tools.exe motoru bulunamadÃ„Â±!`);
-      resolve({ success: false, message: `tools/mod-tools.exe bulunamadÃ„Â±!` });
+      sendLog('[ERROR] tools/mod-tools.exe engine not found.');
+      finish({ success: false, message: 'tools/mod-tools.exe engine not found.' });
       return;
     }
 
     const toolsDir = path.dirname(cliPath);
     const gameDir = findGameDir(lolExePath);
 
-    sendLog(`[SÃ„Â°STEM] Game KlasÃƒÂ¶rÃƒÂ¼ DoÃ„Å¸rulandÃ„Â±: ${gameDir}`);
+    sendLog(`[SYSTEM] Game folder verified: ${gameDir}`);
 
     const installedDir = path.join(getUserDataDir(), 'installed');
     const profileDir = path.join(getUserDataDir(), 'profiles', 'Default Profile');
@@ -2115,14 +2324,25 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
     const needsImport = !isDirectory && (!targetIsDirectory || isFolderEmpty || !hasUsableImportedMod);
     const effectiveSkinDir = isDirectory ? skinPath : targetSkinDir;
     const effectiveFolderName = path.basename(effectiveSkinDir);
-    const overlayKey = `${effectiveFolderName}|${gameDir}`;
-    if (data.allMods) preparedOverlayKey = null;
+    const selectedOverlayKey = data.allMods && Array.isArray(data.modNames) ? [...new Set(data.modNames.map(name => String(name).replace(/[\\/]/g, "")))].sort().join("|") : "";
+    const overlayKey = `${effectiveFolderName}|${gameDir}|${selectedOverlayKey}`;
 
     // Eğer skinPath bir klasörse ve installed içinde değilse kopyala
     if (isDirectory && skinPath !== targetSkinDir) {
       try {
-        if (targetIsDirectory) fs.rmSync(targetSkinDir, { recursive: true, force: true });
-        fs.cpSync(skinPath, targetSkinDir, { recursive: true });
+        const sourceKey = path.resolve(skinPath);
+        const sourceSignature = getDirectorySignature(skinPath);
+        let copyCache = {};
+        try { if (fs.existsSync(sourceCopyCachePath)) copyCache = JSON.parse(fs.readFileSync(sourceCopyCachePath, 'utf8')) || {}; } catch (_) { copyCache = {}; }
+        const canReuseCopy = targetIsDirectory && copyCache[sourceKey] === sourceSignature;
+        if (canReuseCopy) {
+          sendLog('[CACHE] Değişmeyen skin klasörü yeniden kopyalanmadı.');
+        } else {
+          if (targetIsDirectory) fs.rmSync(targetSkinDir, { recursive: true, force: true });
+          fs.cpSync(skinPath, targetSkinDir, { recursive: true });
+          copyCache[sourceKey] = sourceSignature;
+          try { fs.writeFileSync(sourceCopyCachePath, JSON.stringify(copyCache, null, 2)); } catch (_) {}
+        }
       } catch (cpErr) {
         console.warn('[RunSkinPrep] Kopya uyarısı:', cpErr.message);
       }
@@ -2139,10 +2359,10 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
         const logFile = fs.openSync(logFilePath, 'w');
         activeModProcess = spawn(cliPath, ['runoverlay', profileDir, configFilePath, `--game:${gameDir}`, '--opts:none'], { cwd: toolsDir, detached: false, windowsHide: true, stdio: ['pipe', logFile, logFile] });
         sendLog(`[BAŞARILI] cslol-dll.dll bağlandı! Oyuna girebilirsin.`);
-        resolve({ success: true, message: 'Mod oyuna başarıyla bağlandı!' });
+        finish({ success: true, message: 'Mod oyuna başarıyla bağlandı!' });
       } catch (spawnErr) {
         sendLog(`[ÇALIŞTIRMA HATASI] ${spawnErr.message}`);
-        resolve({ success: false, message: `Çalıştırma Hatası: ${spawnErr.message}` });
+        finish({ success: false, message: `Çalıştırma Hatası: ${spawnErr.message}` });
       }
     };
 
@@ -2152,24 +2372,8 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
         startOverlayProcess();
         return;
       }
-      // 1) Lingering süreçleri temizle ki dosya kilidi hatası oluşmasın
-      if (activeModProcess) {
-        try { activeModProcess.kill(); } catch (e) {}
-        activeModProcess = null;
-      }
-      try {
-        // Süreç çalışmıyorsa taskkill Windows'a hata yazmasın; bu normal bir durumdur.
-        require('child_process').execSync('taskkill /F /IM mod-tools.exe /T', {
-          windowsHide: true,
-          stdio: 'ignore'
-        });
-      } catch (_) {}
-      try {
-        require('child_process').execSync('taskkill /F /IM cslol-tools.exe /T', {
-          windowsHide: true,
-          stdio: 'ignore'
-        });
-      } catch (_) {}
+      // 1) Yalnızca bu uygulamaya ait aktif süreci durdur; diğer mod araçlarına dokunma.
+      stopActiveModProcess();
 
       // 2) Profile klasörünü temizle
       try {
@@ -2185,11 +2389,12 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
       let overlayInputDir = installedDir;
       if (data.allMods && Array.isArray(data.modNames) && data.modNames.length > 0) {
         const selectedModsDir = path.join(getUserDataDir(), 'selected-overlay-mods');
+        const stagingDir = selectedModsDir + '.tmp';
         const storeInstalledDir = path.join(getUserDataDir(), 'store-installed');
         var stagedModNames = [];
         try {
-          if (fs.existsSync(selectedModsDir)) fs.rmSync(selectedModsDir, { recursive: true, force: true });
-          fs.mkdirSync(selectedModsDir, { recursive: true });
+          if (fs.existsSync(stagingDir)) fs.rmSync(stagingDir, { recursive: true, force: true });
+          fs.mkdirSync(stagingDir, { recursive: true });
           for (const modName of [...new Set(data.modNames)]) {
             const safeName = String(modName || '').replace(/[\\/]/g, '');
             if (!safeName || safeName === '.' || safeName === '..') continue;
@@ -2204,12 +2409,14 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
                 } catch (_) {}
               }
             }
-            const targetMod = path.join(selectedModsDir, safeName);
+            const targetMod = path.join(stagingDir, safeName);
             if (fs.existsSync(sourceMod) && fs.statSync(sourceMod).isDirectory()) {
               fs.cpSync(sourceMod, targetMod, { recursive: true });
               stagedModNames.push(safeName);
             } else sendLog(`[OVERLAY] Seçili mod klasörü bulunamadı: ${safeName}`);
           }
+          if (fs.existsSync(selectedModsDir)) fs.rmSync(selectedModsDir, { recursive: true, force: true });
+          fs.renameSync(stagingDir, selectedModsDir);
           overlayInputDir = selectedModsDir;
         } catch (stageErr) {
           sendLog(`[OVERLAY] Seçili modlar hazırlanamadı: ${stageErr.message}`);
@@ -2219,7 +2426,7 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
       if (data.allMods) {
         const selectedNames = [...new Set((stagedModNames || data.modNames || []).map(name => String(name).replace(/[\\/]/g, '')))].filter(Boolean);
         if (!selectedNames.length) {
-          resolve({ success: false, message: 'Seçili mod klasörleri bulunamadı; overlay oluşturulamadı.' });
+          finish({ success: false, message: 'Seçili mod klasörleri bulunamadı; overlay oluşturulamadı.' });
           return;
         }
         if (selectedNames.length) mkOverlayArgs.splice(4, 0, `--mods:${selectedNames.join('/')}`);
@@ -2227,20 +2434,21 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
         mkOverlayArgs.splice(4, 0, `--mods:${effectiveFolderName}`);
       }
 
-      execFile(cliPath, mkOverlayArgs, { cwd: toolsDir, windowsHide: true, timeout: 120000, maxBuffer: 8 * 1024 * 1024 }, (mkErr, mkStdout, mkStderr) => {
+      execFile(cliPath, mkOverlayArgs, { cwd: toolsDir, windowsHide: true, timeout: 0, maxBuffer: 8 * 1024 * 1024 }, (mkErr, mkStdout, mkStderr) => {
         if (mkErr) {
           const errStr = (mkStderr || mkErr.message).toString();
           if (retryCount < 2 && (errStr.includes('file.error') || errStr.includes('kullanıldığından') || errStr.includes('locked'))) {
+            cleanupLingeringToolProcesses();
             sendLog(`[OVERLAY UYARISI] Dosya kilitli, 600ms sonra tekrar deneniyor (${retryCount + 1}/2)...`);
             setTimeout(() => executeOverlay(retryCount + 1), 600);
             return;
           }
           sendLog(`[OVERLAY HATASI] ${errStr}`);
-          resolve({ success: false, message: `Overlay Hatası: ${errStr}` });
+          finish({ success: false, message: `Overlay Hatası: ${errStr}` });
           return;
         }
 
-        preparedOverlayKey = overlayKey;
+        preparedOverlayKey = overlayKey; try { fs.writeFileSync(preparedOverlayKeyFile, overlayKey, "utf8"); } catch (_) {}
         sendLog(`[DLL HOOK] cslol-dll.dll enjekte ediliyor ve oyuna bağlanıyor...`);
 
         try {
@@ -2253,10 +2461,10 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
           ], { cwd: toolsDir, detached: false, windowsHide: true, stdio: ['pipe', logFile, logFile] });
 
           sendLog(`[BAŞARILI] cslol-dll.dll bağlandı! Oyuna girebilirsin.`);
-          resolve({ success: true, message: 'Mod oyuna başarıyla bağlandı!' });
+          finish({ success: true, message: 'Mod oyuna başarıyla bağlandı!' });
         } catch (spawnErr) {
           sendLog(`[ÇALIŞTIRMA HATASI] ${spawnErr.message}`);
-          resolve({ success: false, message: `Çalıştırma Hatası: ${spawnErr.message}` });
+          finish({ success: false, message: `Çalıştırma Hatası: ${spawnErr.message}` });
         }
       });
     };
@@ -2269,11 +2477,11 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
       if (!fs.existsSync(targetSkinDir)) fs.mkdirSync(targetSkinDir, { recursive: true });
 
       const importArgs = ['import', skinPath, targetSkinDir, `--game:${gameDir}`, '--noTFT'];
-      execFile(cliPath, importArgs, { cwd: toolsDir, windowsHide: true, timeout: 120000, maxBuffer: 8 * 1024 * 1024 }, (importErr, stdout, stderr) => {
+      execFile(cliPath, importArgs, { cwd: toolsDir, windowsHide: true, timeout: 0, maxBuffer: 8 * 1024 * 1024 }, (importErr, stdout, stderr) => {
         if (importErr) {
           sendLog(`[İÇE AKTARMA HATASI] ${stderr || importErr.message}`);
           try { if (fs.existsSync(targetSkinDir)) fs.rmSync(targetSkinDir, { recursive: true, force: true }); } catch (_) {}
-          resolve({ success: false, message: `Import Hatası: ${stderr || importErr.message}` });
+          finish({ success: false, message: `Import Hatası: ${stderr || importErr.message}` });
           return;
         }
 
@@ -2285,11 +2493,11 @@ ipcMain.handle('run-cslol-skin', async (event, data) => {
           fs.writeFileSync(path.join(metaDir, 'info.json'), JSON.stringify({ author: "Herobrine", name: effectiveFolderName, version: "1.0.0" }, null, 2));
         }
 
-        if (data.prepareOnly) resolve({ success: true, modName: effectiveFolderName, message: 'Skin paketi hazırlandı.' });
+        if (data.prepareOnly) finish({ success: true, modName: effectiveFolderName, message: 'Skin paketi hazırlandı.' });
         else executeOverlay();
       });
     } else {
-      if (data.prepareOnly) resolve({ success: true, modName: effectiveFolderName, message: 'Skin paketi hazırlandı.' });
+      if (data.prepareOnly) finish({ success: true, modName: effectiveFolderName, message: 'Skin paketi hazırlandı.' });
       else executeOverlay();
     }
   });
@@ -2300,9 +2508,9 @@ ipcMain.handle('get-app-version', async () => {
   try {
     const pkgPath = path.resolve(__dirname, 'package.json');
     delete require.cache[pkgPath];
-    return String(require(pkgPath).version || '1.0.5');
+    return String(require(pkgPath).version || '1.0.7');
   } catch (_) {
-    return '1.0.5';
+    return '1.0.7';
   }
 });
 
@@ -2503,3 +2711,33 @@ ipcMain.handle('download-and-install-update', async (event, data) => {
     downloadFile(downloadUrl);
   });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
