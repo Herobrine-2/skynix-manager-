@@ -10,6 +10,7 @@
     <!-- Firebase Realtime Live Server SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script let pinnedAlwaysOnMods = JSON.parse(localStorage.getItem('skynix_pinnedMods') || '[]');</script>
     <style>
         :root {
             --bg-main: #05070b;
@@ -4824,6 +4825,20 @@
         let activeEditingPresetId = null;
 
         function renderCustomSkins() {
+            function togglePinnedMod(idx) {
+                const skin = customSkinsList[idx];
+                const key = skin.path || skin.title;
+                const existingIdx = pinnedAlwaysOnMods.findIndex(m => (m.path || m.title) === key);
+                if (existingIdx > -1) {
+                    pinnedAlwaysOnMods.splice(existingIdx, 1);
+                    showToast(currentLang === 'tr' ? 'Sabit modlar listesinden çıkarıldı.' : 'Removed from always-on mods.');
+                } else {
+                    pinnedAlwaysOnMods.push({ title: skin.title, path: skin.path, category: skin.category || detectSkinCategory(skin) });
+                    showToast(currentLang === 'tr' ? 'Bu mod artık her zaman aktif olacak!' : 'This mod will now always stay active!');
+                }
+                localStorage.setItem('skynix_pinnedMods', JSON.stringify(pinnedAlwaysOnMods));
+                renderCustomSkins();
+            }
             const grid = document.getElementById('customSkinGrid');
             if (!grid) return;
             const searchVal = (document.getElementById('customSkinSearch')?.value || '').toLowerCase();
@@ -4860,6 +4875,9 @@
                         
                         <div class="three-dots-btn" onclick="toggleDropdownMenu(event, ${idx})">⋮</div>
                         <div class="card-menu-dropdown" id="dropdown-${idx}">
+                            <div class="dropdown-item" onclick="event.stopPropagation(); togglePinnedMod(${idx})">
+                              ${pinnedAlwaysOnMods.some(m => (m.path||m.title) === (skin.path||skin.title)) ? '📌 Sabitten Kaldır' : '📌 Her Zaman Aktif Tut'}
+                            </div>
                             <div class="dropdown-item" onclick="event.stopPropagation(); openEditSkinModal(${idx})">${dict.btnEdit}</div>
                             <div class="dropdown-item" onclick="event.stopPropagation(); exportCustomSkin(${idx})">${dict.btnExport || 'Dışa Aktar (.fantome)'}</div>
                             <div class="dropdown-item" onclick="event.stopPropagation(); runSkinFixerAction(${idx})">Skyfixer (Otomatik Onar)</div>
@@ -6281,7 +6299,7 @@ async function exportCustomSkin(idx) {
 // ════════ OTOMATİK DESTANSI / EFSANEVİ ŞAMPİYON KOSTÜMÜ SEÇİCİ ════════
 async function handleAutoPickedChampion(championId) {
     try {
-        const foundChamp = Object.values(allChampions).find(c => String(c.key) === String(championId) || Number(c.key) === Number(championId));
+        const foundChamp = Object.values(allChampions).find(c => String(c.key) === String(championId));
         if (!foundChamp) return;
         const champId = foundChamp.id;
         const champKey = String(foundChamp.key);
@@ -6349,37 +6367,58 @@ async function handleAutoPickedChampion(championId) {
         const chosenSkin = premiumSkins[Math.floor(Math.random() * premiumSkins.length)];
         const splashImg = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champId}_${chosenSkin.num}.jpg`;
 
-        activeQueue.push({
-            title: chosenSkin.name,
-            img: splashImg,
-            champKey: champData.key,
-            skinNum: chosenSkin.num,
-            champId: champId,
-            champ: champData.name,
-            category: 'champion'
-        });
-        localStorage.setItem('skynix_activeQueue', JSON.stringify(activeQueue));
-        renderActiveLauncherWidget();
-        renderCustomSkins();
-        updateProfileUI();
-        // 2. OTOMATİK BAŞLAT & YENİDEN ENJEKTE:
-        // Eğer motor zaten çalışıyorsa (skinsActive === true), önce eski enjeksiyonu temizce DURDUR,
-        // yeni şampiyon skinini sıraya dahil ederek motoru YENİDEN BAŞLAT!
-        if (skinsActive) {
-            console.log('[AutoPick] Motor zaten çalışıyordu, yeni şampiyon skiniyle birlikte yeniden başlatılıyor...');
-            if (typeof stopActiveMods === 'function') {
-                await stopActiveMods();
-            }
-            setTimeout(() => {
-                if (typeof injectActiveMods === 'function') injectActiveMods();
-            }, 800);
-        } else if (!isInjectingMods && typeof injectActiveMods === 'function') {
-            setTimeout(() => {
-                injectActiveMods();
-            }, 600);
-        }
+        await launchCombinedModSet(chosenSkin, champData, champId, splashImg);
     } catch (e) {
         console.warn('[AutoPick] Hata:', e);
+    }
+}
+
+async function launchCombinedModSet(chosenSkin, champData, champId, splashImg) {
+    let lolPath = localStorage.getItem('lolExePath') || 'C:\\Riot Games\\League of Legends\\LeagueClient.exe';
+
+    // 1) Champion-Skin vorbereiten (prepareOnly, liefert modName zurück)
+    let dbFolder = localStorage.getItem('skinsDbFolder');
+    let skinPath = await window.electronAPI.findDbSkinFile({
+        champKey: champData.key, champId, skinNum: chosenSkin.num, skinName: chosenSkin.name
+    });
+    let championModName = null;
+    if (skinPath) {
+        const prep = await window.electronAPI.runCslolSkin({ skinPath, lolExePath: lolPath, prepareOnly: true });
+        if (prep.success) championModName = prep.modName;
+    }
+
+    // 2) Gepinnte HUD/Audio/Map-Mods vorbereiten
+    const preparedPinnedNames = [];
+    for (const pinned of pinnedAlwaysOnMods) {
+        if (!pinned.path) continue;
+        const prep = await window.electronAPI.runCslolSkin({ skinPath: pinned.path, lolExePath: lolPath, prepareOnly: true });
+        if (prep.success) preparedPinnedNames.push(prep.modName);
+    }
+
+    const allModNames = [championModName, ...preparedPinnedNames].filter(Boolean);
+    if (allModNames.length === 0) return;
+
+    // 3) Einen einzigen kombinierten Overlay-Start mit allen Mods
+    const result = await window.electronAPI.runCslolSkin({
+        skinPath: skinPath || (pinnedAlwaysOnMods[0]?.path),
+        lolExePath: lolPath,
+        allMods: true,
+        modNames: allModNames
+    });
+
+    if (result.success) {
+        skinsActive = true;
+        window.electronAPI.setSkinRunningState(true);
+        // UI-Status aktualisieren wie in injectActiveMods()
+        const btn = document.getElementById('masterStartBtn');
+        if (btn) {
+            btn.classList.remove('injecting'); btn.classList.add('stop-mode');
+            btn.onclick = stopActiveMods;
+            btn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg><span id="txt-start-btn">${currentLang==='tr'?'SKİNLERİ DURDUR':'STOP SKINS'}</span>`;
+        }
+        showToast(currentLang==='tr' ? `${champData.name}: ${chosenSkin.name} + ${preparedPinnedNames.length} HUD/Mod aktif!` : `${champData.name}: ${chosenSkin.name} + ${preparedPinnedNames.length} HUD/mods active!`);
+    } else {
+        showToast(currentLang==='tr' ? 'Otomatik enjeksiyon başarısız: ' + result.message : 'Auto-inject failed: ' + result.message);
     }
 }
         window.addEventListener('DOMContentLoaded', async () => {
