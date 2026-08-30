@@ -10,7 +10,11 @@
     <!-- Firebase Realtime Live Server SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    <script let pinnedAlwaysOnMods = JSON.parse(localStorage.getItem('skynix_pinnedMods') || '[]');</script>
+    
+    <!-- FIXED SCRIPT BLOCK -->
+    <script>
+        let pinnedAlwaysOnMods = JSON.parse(localStorage.getItem('skynix_pinnedMods') || '[]');
+    </script>
     <style>
         :root {
             --bg-main: #05070b;
