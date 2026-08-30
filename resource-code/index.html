@@ -4829,20 +4829,6 @@
         let activeEditingPresetId = null;
 
         function renderCustomSkins() {
-            function togglePinnedMod(idx) {
-                const skin = customSkinsList[idx];
-                const key = skin.path || skin.title;
-                const existingIdx = pinnedAlwaysOnMods.findIndex(m => (m.path || m.title) === key);
-                if (existingIdx > -1) {
-                    pinnedAlwaysOnMods.splice(existingIdx, 1);
-                    showToast(currentLang === 'tr' ? 'Sabit modlar listesinden çıkarıldı.' : 'Removed from always-on mods.');
-                } else {
-                    pinnedAlwaysOnMods.push({ title: skin.title, path: skin.path, category: skin.category || detectSkinCategory(skin) });
-                    showToast(currentLang === 'tr' ? 'Bu mod artık her zaman aktif olacak!' : 'This mod will now always stay active!');
-                }
-                localStorage.setItem('skynix_pinnedMods', JSON.stringify(pinnedAlwaysOnMods));
-                renderCustomSkins();
-            }
             const grid = document.getElementById('customSkinGrid');
             if (!grid) return;
             const searchVal = (document.getElementById('customSkinSearch')?.value || '').toLowerCase();
@@ -4879,9 +4865,6 @@
                         
                         <div class="three-dots-btn" onclick="toggleDropdownMenu(event, ${idx})">⋮</div>
                         <div class="card-menu-dropdown" id="dropdown-${idx}">
-                            <div class="dropdown-item" onclick="event.stopPropagation(); togglePinnedMod(${idx})">
-                              ${pinnedAlwaysOnMods.some(m => (m.path||m.title) === (skin.path||skin.title)) ? '📌 Sabitten Kaldır' : '📌 Her Zaman Aktif Tut'}
-                            </div>
                             <div class="dropdown-item" onclick="event.stopPropagation(); openEditSkinModal(${idx})">${dict.btnEdit}</div>
                             <div class="dropdown-item" onclick="event.stopPropagation(); exportCustomSkin(${idx})">${dict.btnExport || 'Dışa Aktar (.fantome)'}</div>
                             <div class="dropdown-item" onclick="event.stopPropagation(); runSkinFixerAction(${idx})">Skyfixer (Otomatik Onar)</div>
