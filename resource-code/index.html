@@ -10,10 +10,11 @@
     <!-- Firebase Realtime Live Server SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-    
+
     <!-- FIXED SCRIPT BLOCK -->
     <script>
         let pinnedAlwaysOnMods = JSON.parse(localStorage.getItem('skynix_pinnedMods') || '[]');
+        pinnedAlwaysOnMods = Array.isArray(pinnedAlwaysOnMods) ? pinnedAlwaysOnMods.filter(m => m && m.path) : [];
     </script>
     <style>
         :root {
@@ -141,6 +142,8 @@
             100% { transform: scale(1); }
         }
 
+        .loadout-star-btn { position:absolute; top:46px; left:8px; z-index:10; width:32px; height:32px; border-radius:50%; border:1.5px solid rgba(255,255,255,.12); background:rgba(10,10,30,.72); color:rgba(255,255,255,.58); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:18px; line-height:1; transition:all .22s ease; backdrop-filter:blur(6px); }
+        .loadout-star-btn:hover, .loadout-star-btn.active { color:#ffd166; border-color:#ffd166; background:rgba(255,209,102,.16); transform:scale(1.12); }
         .icon-lg { width: 22px; height: 22px; }
 
         /* Sabit Metalik Beyaz Kanat Logosu Stilleri */
@@ -199,21 +202,150 @@
         }
         @keyframes toastIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Yükleme Ekranı */
+        /* ─── YÜKLEMEEkranı – SİNEMATİK ─── */
         #loadingScreen {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: #020305; z-index: 9999; display: flex; flex-direction: column;
-            justify-content: flex-end; align-items: center; padding-bottom: 90px;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            pointer-events: none;
+            justify-content: center; align-items: center;
+            transition: opacity 0.6s ease;
+            overflow: hidden;
         }
-        .loading-title-container { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); z-index: 3; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .loading-app-title { font-size: 42px; font-weight: 800; color: #fff; letter-spacing: 3px; text-transform: uppercase; text-shadow: 0 0 25px var(--accent-glow); }
-        .loading-app-sub { font-size: 14px; font-weight: 700; color: var(--accent-color); letter-spacing: 5px; margin-top: 4px; }
-        .loading-content { position: relative; z-index: 2; width: 600px; max-width: 90vw; text-align: center; background: var(--bg-card); padding: 24px; border-radius: 16px; border: 1px solid var(--border-color); backdrop-filter: blur(10px); }
-        .loading-subtitle { color: var(--text-main); font-size: 14px; margin-bottom: 16px; font-weight: 600; }
+        #loadingScreen .ls-bg {
+            position: absolute; inset: 0; z-index: 0;
+            background: radial-gradient(ellipse at 50% 60%, rgba(99,102,241,0.12) 0%, transparent 70%),
+                        radial-gradient(ellipse at 20% 20%, rgba(56,189,248,0.07) 0%, transparent 50%),
+                        #020305;
+        }
+        #loadingScreen .ls-particles {
+            position: absolute; inset: 0; z-index: 1; pointer-events: none;
+        }
+        #loadingScreen .ls-particle {
+            position: absolute; border-radius: 50%;
+            background: var(--accent-color);
+            opacity: 0;
+            animation: lsParticleFloat linear infinite;
+        }
+        @keyframes lsParticleFloat {
+            0%   { opacity: 0; transform: translateY(100vh) scale(0.5); }
+            10%  { opacity: 0.6; }
+            90%  { opacity: 0.3; }
+            100% { opacity: 0; transform: translateY(-20vh) scale(1.2); }
+        }
+        #loadingScreen .ls-center {
+            position: relative; z-index: 2; display: flex; flex-direction: column;
+            align-items: center; gap: 0;
+        }
+        #loadingScreen .ls-logo {
+            width: 110px; height: 110px; object-fit: contain; margin-bottom: 8px;
+            filter: drop-shadow(0 0 40px var(--accent-glow)) drop-shadow(0 0 18px rgba(255,255,255,0.3));
+            animation: lsLogoPulse 2.8s ease-in-out infinite;
+        }
+        @keyframes lsLogoPulse {
+            0%, 100% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 40px var(--accent-glow)); }
+            50%      { transform: scale(1.06) translateY(-5px); filter: drop-shadow(0 0 60px var(--accent-glow)) drop-shadow(0 0 25px rgba(255,255,255,0.4)); }
+        }
+        #loadingScreen .ls-title {
+            font-size: 48px; font-weight: 900; color: #fff; letter-spacing: 8px;
+            text-shadow: 0 0 40px var(--accent-glow), 0 0 80px rgba(99,102,241,0.4);
+            animation: lsFadeSlideUp 0.8s ease both;
+        }
+        #loadingScreen .ls-sub {
+            font-size: 12px; font-weight: 700; color: var(--accent-color);
+            letter-spacing: 7px; margin-top: 4px; text-transform: uppercase;
+            animation: lsFadeSlideUp 0.8s ease 0.2s both;
+        }
+        #loadingScreen .ls-divider {
+            width: 1px; height: 40px; background: linear-gradient(to bottom, transparent, var(--accent-color), transparent);
+            margin: 20px 0; animation: lsFadeIn 1s ease 0.4s both;
+        }
+        #loadingScreen .ls-progress-wrap {
+            width: 360px; max-width: 85vw;
+            animation: lsFadeSlideUp 0.8s ease 0.5s both;
+        }
+        #loadingScreen .ls-status {
+            font-size: 12px; font-weight: 600; color: rgba(148,163,184,0.8);
+            text-align: center; margin-bottom: 12px; min-height: 18px;
+            letter-spacing: 0.5px;
+        }
+        #loadingScreen .ls-bar-outer {
+            width: 100%; height: 3px; background: rgba(255,255,255,0.06);
+            border-radius: 99px; overflow: hidden; position: relative;
+        }
+        #loadingScreen .ls-bar-inner {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, var(--accent-color), #38bdf8, var(--accent-color));
+            background-size: 200% 100%;
+            border-radius: 99px;
+            transition: width 0.35s ease;
+            box-shadow: 0 0 12px var(--accent-color), 0 0 4px #38bdf8;
+            animation: lsShimmer 2s linear infinite;
+        }
+        @keyframes lsShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        #loadingScreen .ls-version {
+            margin-top: 14px; font-size: 10px; font-weight: 700;
+            color: rgba(100,116,139,0.6); letter-spacing: 2px; text-align: center;
+        }
+        #loadingScreen .ls-dots {
+            display: inline-flex; gap: 5px; margin-left: 4px;
+        }
+        #loadingScreen .ls-dots span {
+            width: 3px; height: 3px; border-radius: 50%;
+            background: var(--accent-color);
+            animation: lsDot 1.2s ease-in-out infinite;
+        }
+        #loadingScreen .ls-dots span:nth-child(2) { animation-delay: 0.2s; }
+        #loadingScreen .ls-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes lsDot { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1.2); opacity: 1; } }
+        @keyframes lsFadeSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes lsFadeIn { from { opacity:0; } to { opacity:1; } }
+
+        /* Legacy selectors (still referenced by JS) */
+        .loading-title-container { display: none; }
+        .loading-app-title { display: none; }
+        .loading-app-sub { display: none; }
+        .loading-content { display: none; }
+        .loading-subtitle { display: none; }
         .progress-bar-container { width: 100%; height: 10px; background: rgba(255,255,255,0.08); border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); }
         .progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent-color), #38bdf8); transition: width 0.3s ease; box-shadow: 0 0 12px var(--accent-color); }
+
+        /* ─── THEMED RANGE / SLIDER ─── */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 99px;
+            outline: none;
+            cursor: pointer;
+            position: relative;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 4px;
+            border-radius: 99px;
+            background: linear-gradient(90deg, var(--accent-color) 0%, rgba(255,255,255,0.1) 0%);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            border: 2px solid rgba(255,255,255,0.25);
+            box-shadow: 0 0 8px var(--accent-glow), 0 2px 6px rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            margin-top: -6px;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.25);
+            box-shadow: 0 0 14px var(--accent-glow), 0 0 6px rgba(255,255,255,0.3);
+        }
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.1);
+        }
+        input[type="range"]:focus { outline: none; }
 
         /* Üst Başlık Çubuğu */
         .titlebar { height: 46px; background: var(--bg-card); backdrop-filter: blur(12px); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); -webkit-app-region: drag; z-index: 100; padding: 0 16px; }
@@ -862,7 +994,7 @@
             background: var(--accent-color); color: #020617; border: none; padding: 10px 20px; border-radius: 10px;
             font-size: 13px; font-weight: 800; transition: 0.2s; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
         }
-        .btn-primary:hover { filter: brightness(1.15); transform: translateY(-2px); }
+        .btn-primary:hover { filter: brightness(1.15); transform: translateY(-2px); }\n        .btn-secondary { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 800; transition: .2s; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }\n        .btn-secondary:hover { border-color: var(--accent-color); color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 12%, var(--bg-card)); transform: translateY(-2px); }
 
         /* Temalar Izgarası */
         .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin-top: 10px; }
@@ -1001,7 +1133,57 @@
         #skyfixerStartActionBtn:hover:not(:disabled) { transform:translateY(-1px); filter:brightness(1.12); box-shadow:0 12px 28px rgba(99,102,241,.5), inset 0 1px 0 rgba(255,255,255,.25) !important; }
         #skyfixerStartActionBtn:disabled { color:#e2e8f0 !important; opacity:.75; }
     </style>
-</head>
+<style id="skynix-onboarding-styles">
+#skynixOnboarding{position:fixed;inset:0;z-index:120000;display:none;align-items:center;justify-content:center;background:rgba(3,5,15,.82);backdrop-filter:blur(18px);font-family:inherit;color:var(--text-main,#f8fafc)}
+#skynixOnboarding.show{display:flex;animation:skynixFadeIn .28s ease}
+@keyframes skynixFadeIn{from{opacity:0}to{opacity:1}}
+.skynix-wizard{width:min(720px,calc(100vw - 30px));max-height:min(760px,calc(100vh - 30px));overflow:hidden;border:1px solid color-mix(in srgb,var(--accent-color,#6366f1) 55%,transparent);border-radius:26px;background:linear-gradient(145deg,rgba(18,24,43,.97),rgba(7,10,22,.98));box-shadow:0 30px 100px #000b,0 0 50px var(--accent-glow,rgba(99,102,241,.25));position:relative}
+.skynix-wizard-head{padding:24px 28px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:14px}.skynix-wizard-mark{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent-color,#6366f1),#8b5cf6);box-shadow:0 0 24px var(--accent-glow,rgba(99,102,241,.35))}.skynix-wizard-mark svg{width:27px;height:27px;fill:none;stroke:#fff;stroke-width:1.8}.skynix-wizard-title{font-size:18px;font-weight:900}.skynix-wizard-step{margin-left:auto;color:var(--text-muted,#94a3b8);font-size:12px;font-weight:800}.skynix-wizard-progress{height:4px;background:rgba(255,255,255,.08)}.skynix-wizard-progress i{display:block;height:100%;width:20%;background:linear-gradient(90deg,var(--accent-color,#6366f1),#a78bfa);transition:width .3s ease;box-shadow:0 0 14px var(--accent-color,#6366f1)}
+.skynix-wizard-body{padding:28px;min-height:390px;display:flex;align-items:center}.skynix-wizard-page{display:none;width:100%;animation:skynixSlide .3s ease}.skynix-wizard-page.active{display:block}@keyframes skynixSlide{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+.skynix-wizard-page h2{margin:0 0 8px;font-size:25px}.skynix-wizard-page>p{margin:0 0 22px;color:var(--text-muted,#9aa7c2);line-height:1.55;font-size:13px}.skynix-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.skynix-choice{border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.045);padding:20px;cursor:pointer;text-align:left;color:inherit;transition:.2s}.skynix-choice:hover,.skynix-choice.selected{border-color:var(--accent-color,#6366f1);background:color-mix(in srgb,var(--accent-color,#6366f1) 15%,transparent);box-shadow:0 0 22px var(--accent-glow,rgba(99,102,241,.2));transform:translateY(-2px)}.skynix-choice strong{display:block;font-size:15px}.skynix-choice small{display:block;margin-top:5px;color:var(--text-muted,#9aa7c2);font-size:11px}.skynix-theme-swatch{height:42px;border-radius:10px;margin-bottom:12px}.skynix-detect{border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:22px;background:rgba(255,255,255,.035);display:flex;align-items:center;gap:16px}.skynix-detect-icon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:rgba(34,197,94,.15);color:#4ade80;font-size:26px}.skynix-detect-path{font-size:12px;color:var(--text-muted,#9aa7c2);word-break:break-all;margin-top:4px}.skynix-guide-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.skynix-guide{padding:18px 14px;border-radius:15px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.1);min-height:130px}.skynix-guide svg{width:27px;height:27px;stroke:var(--accent-color,#818cf8);fill:none;stroke-width:1.8;margin-bottom:12px}.skynix-guide strong{display:block;font-size:13px}.skynix-guide small{display:block;color:var(--text-muted,#9aa7c2);font-size:11px;line-height:1.4;margin-top:6px}.skynix-final{text-align:center;padding:18px}.skynix-final-logo{width:82px;height:82px;margin:0 auto 18px;filter:drop-shadow(0 0 18px var(--accent-color,#6366f1))}.skynix-final h2{font-size:28px}.skynix-final p{max-width:460px;margin:10px auto 0}.skynix-wizard-foot{padding:16px 28px 22px;display:flex;justify-content:space-between;gap:12px;border-top:1px solid rgba(255,255,255,.08)}.skynix-wizard-btn{border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:11px 20px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;color:var(--text-main,#fff);background:rgba(255,255,255,.06)}.skynix-wizard-btn.primary{border:0;background:linear-gradient(135deg,var(--accent-color,#6366f1),#8b5cf6);box-shadow:0 8px 22px var(--accent-glow,rgba(99,102,241,.3))}.skynix-wizard-btn:disabled{opacity:.45;cursor:not-allowed}.skynix-badges-card{margin-top:18px;padding:20px 22px;border:1px solid var(--border-color,rgba(255,255,255,.1));border-radius:16px;background:rgba(255,255,255,.035)}.skynix-level-row{display:flex;align-items:center;justify-content:space-between;gap:16px}.skynix-level-name{font-size:18px;font-weight:900}.skynix-level-xp{font-size:11px;color:var(--text-muted,#9aa7c2);font-weight:700}.skynix-xp-track{height:8px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden;margin:12px 0 18px}.skynix-xp-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--accent-color,#6366f1),#a78bfa);box-shadow:0 0 12px var(--accent-color,#6366f1);transition:width .4s ease}.skynix-badge-list{display:flex;flex-wrap:wrap;gap:10px}.skynix-badge{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(0,0,0,.14);opacity:.38;filter:grayscale(.7)}.skynix-badge.earned{opacity:1;filter:none;border-color:color-mix(in srgb,var(--badge-color,#6366f1) 70%,transparent);box-shadow:0 0 16px color-mix(in srgb,var(--badge-color,#6366f1) 30%,transparent)}.skynix-badge-mark{width:27px;height:27px;color:var(--badge-color,#818cf8)}.skynix-badge-mark svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8}.skynix-badge span{font-size:11px;font-weight:800}.skynix-badge small{display:block;color:var(--text-muted,#9aa7c2);font-size:9px;margin-top:2px}@media(max-width:600px){.skynix-choice-grid,.skynix-guide-grid{grid-template-columns:1fr}.skynix-wizard-body{padding:22px;min-height:420px}.skynix-wizard-head,.skynix-wizard-foot{padding-left:22px;padding-right:22px}}
+</style><style id="skynix-onboarding-fullscreen-overrides">
+#skynixOnboarding{padding:0}
+.skynix-wizard{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0;border-left:0;border-right:0;display:flex;flex-direction:column}
+.skynix-wizard-body{flex:1;min-height:0;overflow:auto;padding:clamp(28px,5vw,72px) clamp(22px,8vw,140px)}
+.skynix-wizard-page{max-width:1120px;margin:0 auto}
+.skynix-wizard-foot{padding:20px clamp(22px,8vw,140px) 28px}
+.skynix-all-themes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;max-height:52vh;overflow:auto;padding:3px}
+.skynix-all-themes .skynix-choice{min-height:108px;padding:14px}
+.skynix-all-themes .skynix-theme-swatch{height:36px}
+@media(max-width:600px){.skynix-wizard-head{padding:18px 20px 12px}.skynix-wizard-body{padding:26px 18px}.skynix-wizard-foot{padding:15px 18px 20px}}
+</style><style id="skynix-skyfixer-disabled">
+/* Skyfixer geçici olarak devre dışı; dosyalar ve motor korunur. */
+#skyfixerModal{display:none!important;pointer-events:none!important}
+#skyfixerStartActionBtn,#skyfixerBtnModLoader,#skyfixerBtnClose{pointer-events:none!important;opacity:.45!important;cursor:not-allowed!important}
+.dropdown-item[onclick*="runSkinFixerAction"],.dropdown-item[onclick*="openSkyfixer"]{display:none!important}
+</style><style id="skynix-leaderboard-solid-modern">
+#leaderboard-panel{padding:clamp(24px,5vw,70px)!important;background:linear-gradient(135deg,#080b16 0%,#11152a 52%,#090c18 100%)!important}
+#leaderboard-panel .skynix-leaderboard-wrap{max-width:1080px!important;padding:34px 38px 40px!important;border:1px solid var(--accent-color)!important;border-radius:26px!important;background:#121827!important;box-shadow:0 22px 70px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.04),inset 0 1px rgba(255,255,255,.08)!important;backdrop-filter:none!important}
+#leaderboard-panel .skynix-leaderboard-head{padding:0 0 26px!important;margin-bottom:20px!important;border-bottom:1px solid rgba(255,255,255,.1)!important}
+#leaderboard-panel .skynix-leaderboard-head h1{font-size:clamp(28px,3.4vw,40px)!important;font-weight:950!important;letter-spacing:-1px!important;text-shadow:0 0 22px color-mix(in srgb,var(--accent-color) 35%,transparent)}
+#leaderboard-panel .skynix-leaderboard-head p{font-size:14px!important;color:#9aa8c7!important}
+#leaderboard-panel .skynix-rank-row{position:relative;overflow:hidden;min-height:76px!important;padding:16px 20px!important;border:1px solid #2b3854!important;border-radius:16px!important;background:#1a2234!important;box-shadow:0 8px 18px rgba(0,0,0,.24)!important}
+#leaderboard-panel .skynix-rank-row:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--accent-color);opacity:.55}
+#leaderboard-panel .skynix-rank-row:nth-child(1){border-color:#f5c451!important;background:linear-gradient(105deg,#302912,#1c2437 65%)!important;box-shadow:0 0 28px rgba(245,196,81,.24),inset 0 1px rgba(255,255,255,.1)!important;transform:scale(1.012)}
+#leaderboard-panel .skynix-rank-row:nth-child(1):before{background:linear-gradient(#fff1a8,#f5c451)!important;opacity:1}
+#leaderboard-panel .skynix-rank-row:nth-child(2){border-color:#9aa9bd!important;background:linear-gradient(105deg,#222b38,#1a2234 65%)!important;box-shadow:0 0 22px rgba(180,195,215,.16)!important}
+#leaderboard-panel .skynix-rank-row:nth-child(3){border-color:#c78b5a!important;background:linear-gradient(105deg,#30231d,#1a2234 65%)!important;box-shadow:0 0 22px rgba(199,139,90,.16)!important}
+#leaderboard-panel .skynix-rank-no{font-size:22px!important;text-shadow:0 0 12px currentColor}
+#leaderboard-panel .skynix-rank-user img{width:44px!important;height:44px!important;box-shadow:0 0 14px color-mix(in srgb,var(--accent-color) 35%,transparent)}
+@media(max-width:600px){#leaderboard-panel .skynix-leaderboard-wrap{padding:24px 16px 28px!important}#leaderboard-panel .skynix-rank-row{grid-template-columns:34px 1fr auto!important;padding:13px 12px!important}}
+</style><style id="skynix-leaderboard-backdrop-fix">
+#leaderboard-panel{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+</style><style id="skynix-badges-enhancement">
+.skynix-rank-badge{position:absolute;top:8px;right:18px;padding:3px 8px;border-radius:999px;font-size:9px;font-weight:900;letter-spacing:.6px;color:#211600;background:linear-gradient(135deg,#fff0a3,#f5c451);box-shadow:0 0 14px rgba(245,196,81,.55)}
+.skynix-top-badges{display:inline-flex;align-items:center;gap:4px;margin-left:7px;vertical-align:middle}.skynix-top-badge{width:21px;height:21px;display:grid;place-items:center;border-radius:7px;border:1px solid var(--accent-color);color:var(--accent-color);font-size:10px;font-weight:900;box-shadow:0 0 9px color-mix(in srgb,var(--accent-color) 30%,transparent)}.skynix-top-badge.gold{color:#f5c451;border-color:#f5c451;box-shadow:0 0 10px rgba(245,196,81,.45)}
+</style><style id="skynix-badge-modern-size">.skynix-top-badges{gap:7px;margin-left:10px}.skynix-top-badge{width:30px;height:30px;border-radius:10px;font-size:14px;border-width:2px;box-shadow:0 0 14px color-mix(in srgb,var(--accent-color) 48%,transparent)}.skynix-top-badge.gold{border-width:2px;box-shadow:0 0 18px rgba(245,196,81,.7),inset 0 0 8px rgba(245,196,81,.15)}#profilePageName .skynix-top-badges{display:inline-flex;vertical-align:middle}.skynix-badge-mark{width:36px;height:36px}.skynix-badge{padding:10px 13px;gap:11px}</style><style id="skynix-badge-equal-size">#skynixBadgeList{align-items:stretch}.skynix-badge{min-width:158px;min-height:58px;box-sizing:border-box}.skynix-badge-mark{width:40px;height:40px;min-width:40px;display:grid;place-items:center}.skynix-badge-mark svg{width:34px;height:34px}.skynix-badge-mark span{font-size:24px!important;line-height:1;font-weight:900!important;display:grid;place-items:center;width:34px;height:34px}.skynix-badge[data-enhanced-badges] .skynix-badge-mark{font-size:24px}</style><style id="skynix-performance-tuning">
+body.skynix-page-hidden *{animation-play-state:paused!important;transition:none!important}
+@media(max-width:700px){.skynix-badge{min-width:calc(50% - 6px);padding:10px}.skynix-badge-list{gap:8px}.skynix-badge-mark{width:40px;height:40px;min-width:40px}.skynix-badge span{font-size:10px}.skynix-badge small{font-size:9px}}
+@media(max-width:430px){.skynix-badge{min-width:100%}.skynix-top-badge{width:27px;height:27px;font-size:13px}}
+</style><style id="skynix-performance-cards">
+.champion-card,.skin-card,.chroma-thumb-card,.custom-card-frame,.theme-card,.showcase-card,.news-card{content-visibility:auto;contain-intrinsic-size:260px 340px}
+.champion-grid,.custom-grid,.theme-grid,.showcase-grid{contain:layout style}
+</style></head>
 <body>
 
     <div id="toastContainer"></div>
@@ -1077,20 +1259,24 @@
             <div id="discordLoginStatus" style="margin-top:14px; font-size:12px; font-weight:700; text-align:center; color:#64748b; min-height:18px;"></div>
         </div>
 
-        <div style="margin-top:20px; font-size:11px; color:#334155; text-align:center; animation: fadeIn 1.2s ease;">Skynix Manager v2.0 • By Herobrine • discord.gg/2cTNwPWTeE</div>
+        <div style="margin-top:20px; font-size:11px; color:#334155; text-align:center;">Skynix Manager v2.0 • By Herobrine • discord.gg/2cTNwPWTeE</div>
     </div>
 
-    <!-- Yükleme Ekranı -->
-    <div id="loadingScreen" style="display:none;">
-        <div class="loading-title-container">
-            <img src="https://i.hizliresim.com/7d9qpuq.png" class="wings-logo-hero-fixed" alt="Wings Logo">
-            <div class="loading-app-title">SKYNIX</div>
-            <div class="loading-app-sub">SKYNIX MANAGER NEXTGEN</div>
-        </div>
-        <div class="loading-content">
-            <div class="loading-subtitle" id="loadSubtitle">Veriler hazırlanıyor...</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progressBar"></div>
+    <!-- Yükleme Ekranı (Sinematik) -->
+    <div id="loadingScreen" style="display:flex;">
+        <div class="ls-bg"></div>
+        <div class="ls-particles" id="lsParticles"></div>
+        <div class="ls-center">
+            <img src="https://i.hizliresim.com/7d9qpuq.png" class="ls-logo" alt="Skynix Logo">
+            <div class="ls-title">SKYNIX</div>
+            <div class="ls-sub">MANAGER NEXTGEN</div>
+            <div class="ls-divider"></div>
+            <div class="ls-progress-wrap">
+                <div class="ls-status" id="loadSubtitle">Veriler hazırlanıyor<span class="ls-dots"><span></span><span></span><span></span></span></div>
+                <div class="ls-bar-outer">
+                    <div class="ls-bar-inner" id="progressBar"></div>
+                </div>
+                <div class="ls-version" id="lsVersionLabel">SKYNIX MANAGER — v1.0.9</div>
             </div>
         </div>
     </div>
@@ -1182,6 +1368,9 @@
                         <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                         <span id="txt-nav-favorites">Favorilerim</span>
                         <span id="favBadgeCount" style="display:none; position:absolute; top:6px; right:6px; background:var(--accent-color); color:#020617; font-size:9px; font-weight:900; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center;">0</span>
+                    </div>                    <div class="nav-item" onclick="switchTab('automaticLoadouts', this)" id="nav-automatic-loadouts-item" style="position:relative;">
+                        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 2.84 5.76 6.36.93-4.6 4.48 1.09 6.33L12 17.31 6.31 20.3 7.4 13.97 2.8 9.49l6.36-.93L12 2.8z"/></svg>
+                        <span id="txt-nav-automatic-loadouts">Otomatik Skinler</span>
                     </div>
                 </div>
             </div>
@@ -1203,7 +1392,7 @@
                     </div>
                 </div>
             </div>
-            <div id="appVersionLabel" class="app-version-label">v1.0.7</div>
+            <div id="appVersionLabel" class="app-version-label">v1.0.9</div>
         </div>
 
         <div class="content-area">
@@ -1416,7 +1605,7 @@
                     <div class="profile-page-body">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                             <div>
-                                <h2 style="font-size:24px; font-weight:800; color:var(--text-main);" id="profilePageName">Oyuncu</h2>
+                                <h2 style="font-size:24px; font-weight:800; color:var(--text-main);" id="profilePageName">Oyuncu<span id="skynixProfileBadges" class="skynix-top-badges" aria-label="Profil rozetleri"></span></h2>
                                 <p style="font-size:13px; color:var(--accent-color); font-weight:700; margin-top:2px;" id="txt-profile-sub">Skynix Koleksiyoneri & Tasarımcı</p>
                             </div>
                             <button class="btn-primary" onclick="openProfileEditModal()" id="txt-edit-profile-btn">Profili Düzenle</button>
@@ -1545,7 +1734,7 @@
                 </div>
 
                 <div class="setting-row" id="mainFilterBar" style="margin-bottom:20px;">
-                    <div class="search-clear-wrap"><input type="text" id="championSearch" class="form-control" placeholder="Şampiyon ara..." onkeyup="filterChampions()"><button type="button" class="search-clear-btn" id="championSearchClear" onclick="clearChampionSearch()" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
+                    <div class="search-clear-wrap"><input type="text" id="championSearch" class="form-control" placeholder="Şampiyon ara..." oninput="debouncedFilterChampions()"><button type="button" class="search-clear-btn" id="championSearchClear" onclick="clearChampionSearch()" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
                 </div>
 
                 <div id="championGrid" class="champion-grid"></div>
@@ -1588,7 +1777,7 @@
                 </div>
 
                 <div class="setting-row" style="margin-bottom:20px;">
-                    <div class="search-clear-wrap"><input type="text" id="customSkinSearch" class="form-control" placeholder="Özel skinlerimde ara..." onkeyup="renderCustomSkins()"><button type="button" class="search-clear-btn" onclick="clearSearchField('customSkinSearch', renderCustomSkins)" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
+                    <div class="search-clear-wrap"><input type="text" id="customSkinSearch" class="form-control" placeholder="Özel skinlerimde ara..." oninput="renderCustomSkins()" onkeyup="renderCustomSkins()"><button type="button" class="search-clear-btn" onclick="clearSearchField('customSkinSearch', renderCustomSkins)" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
                 </div>
 
                 <div id="customSkinGrid" class="custom-grid"></div>
@@ -1604,7 +1793,7 @@
                 </div>
 
                 <div class="setting-row" style="margin-bottom:16px;">
-                    <div class="search-clear-wrap"><input type="text" id="storeSearch" class="form-control" placeholder="Mağazada mod ara..." onkeyup="renderStoreMods(currentStoreFilter)"><button type="button" class="search-clear-btn" onclick="clearSearchField('storeSearch', () => renderStoreMods(currentStoreFilter))" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
+                    <div class="search-clear-wrap"><input type="text" id="storeSearch" class="form-control" placeholder="Mağazada mod ara..." oninput="renderStoreMods(currentStoreFilter)" onkeyup="renderStoreMods(currentStoreFilter)"><button type="button" class="search-clear-btn" onclick="clearSearchField('storeSearch', () => renderStoreMods(currentStoreFilter))" aria-label="Aramayı temizle" title="Aramayı temizle">×</button></div>
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; margin:-4px 0 14px;">
@@ -1741,6 +1930,13 @@
             </div>
 
             <!-- FAVORİLER PANELİ -->
+            <div id="automaticLoadouts-panel" class="panel">
+                <div class="settings-card" style="margin-bottom:20px;">
+                    <h1 style="font-size:22px;font-weight:800;color:var(--text-main);" id="txt-automatic-loadouts-title">★ Otomatik Skinler</h1>
+                    <p style="font-size:13px;color:var(--text-muted);font-weight:600;" id="txt-automatic-loadouts-sub">Yıldızla seçtiğin skinler burada görünür.</p>
+                </div>
+                <div id="automaticLoadoutsGrid" class="champion-grid" style="min-height:200px;"></div>
+            </div>
             <div id="favorites-panel" class="panel">
                 <div class="settings-card" style="margin-bottom:20px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
@@ -1789,6 +1985,17 @@
 
                     <div class="setting-row">
                         <div>
+                            <div style="font-weight:800; color:var(--text-main);" id="txt-auto-start-title">Şampiyon Kilidinde Otomatik Skin Yükleme</div>
+                            <div style="font-size:12px; color:var(--text-muted);" id="txt-auto-start-sub">Şampiyon kilitlendiğinde kayıtlı loadout otomatik başlatılır</div>
+                        </div>
+                        <label class="toggle-switch" id="autoStartChampionLabel" title="Otomatik skin yükleme">
+                            <input type="checkbox" id="autoStartChampionCheckbox" onchange="toggleAutoStartChampion(this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
                             <div style="font-weight:800; color:var(--text-main);" id="txt-setting-lang-title">Uygulama Dili / Application Language</div>
                             <div style="font-size:12px; color:var(--text-muted);" id="txt-setting-lang-sub">Arayüz dilini anında değiştirin</div>
                         </div>
@@ -1830,6 +2037,16 @@
                         </div>
                         <div style="display:flex; gap:8px; align-items:center;">
                             <button class="btn-primary" onclick="clearDownloadedSkins()" style="background:linear-gradient(135deg,#991b1b,#7f1d1d); border-color:#991b1b;" id="txt-cache-btn">🗑️ Önbelleği Temizle</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-row" style="background:rgba(239,68,68,0.06); border:1px solid rgba(239,68,68,0.25); border-radius:14px; padding:16px; margin:10px 0;">
+                        <div>
+                            <div style="font-weight:800; color:#ef4444; display:flex; align-items:center; gap:8px;" id="txt-reset-app-title">⚠️ Tüm Uygulama Verilerini Sıfırla (Factory Reset)</div>
+                            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="txt-reset-app-sub">Giriş bilgileri, ayarlar, indirilen tüm skinler, önbellek ve AppData klasörünü tamamen temizler.</div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <button class="btn-primary" onclick="resetAllApplicationData()" style="background:linear-gradient(135deg,#dc2626,#991b1b); border-color:#ef4444; color:#fff; font-weight:800; padding:10px 18px; box-shadow:0 4px 15px rgba(220,38,38,0.35);" id="txt-reset-app-btn">🗑️ Tüm Verileri & AppData'yı Sıfırla</button>
                         </div>
                     </div>
 
@@ -1908,8 +2125,8 @@
                 <div style="display:flex; align-items:center; gap:12px;">
                     <img src="icon.png" class="wings-logo-fixed" alt="Logo" style="width:36px; height:36px;">
                     <div>
-                        <h2 style="font-size:17px; font-weight:800; color:#fff; letter-spacing:0.5px; margin:0;" id="skyfixerModalTitle">SKYFIXER ONARIM MERKEZİ</h2>
-                        <p style="font-size:11px; color:var(--accent-color); font-weight:600; margin:2px 0 0 0;" id="skyfixerStatusText">Skyfixer Otomatik Skin Onarıcı</p>
+                        <h2 style="font-size:17px; font-weight:800; color:#fff; letter-spacing:0.5px; margin:0;" id="skyfixerModalTitle">SKYFIXER YEREL ONARIM MERKEZİ</h2>
+                        <p style="font-size:11px; color:var(--accent-color); font-weight:600; margin:2px 0 0 0;" id="skyfixerStatusText">League of Legends Yerel Dosya Senkronizasyon & Onarım Motoru</p>
                     </div>
                 </div>
                 <button class="close-modal" onclick="closeSkyfixerModal()" style="background:none; border:none; color:#94a3b8; font-size:22px; cursor:pointer; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">✕</button>
@@ -1956,7 +2173,7 @@
                         Kapat
                     </button>
                     <button id="skyfixerStartActionBtn" class="btn-primary" onclick="startCurrentSkyfixer()" style="padding:9px 24px; font-size:13px; font-weight:800; border-radius:9px; background:var(--accent-color); color:#fff; cursor:pointer; display:flex; align-items:center; gap:8px; border:none; box-shadow:0 4px 20px rgba(88,101,242,0.4);">
-                        <span>🔧 Onarımı Başlat</span>
+                        <span>🛠️ Yerel Onarımı Başlat</span>
                     </button>
                 </div>
             </div>
@@ -2241,6 +2458,7 @@
         let isAdminMode = localStorage.getItem('isAdminMode') === 'true';
         let customSkinsList = JSON.parse(localStorage.getItem('customSkinsList') || '[]');
         let storeDownloads = JSON.parse(localStorage.getItem('skynix_storeDownloads') || '[]');
+        const renderedTabViews = new Set();
 
         // Mağazadan indirilenler özel skin değildir. Eski sürümlerde yanlışlıkla
         // customSkinsList'e yazılan kayıtları bir kez mağaza listesine taşır.
@@ -2528,12 +2746,19 @@
                 cacheTitle: "İndirilen Skin Önbelleği",
                 cacheSub: "GitHub'dan indirilen tüm skin dosyalarını temizle. Silinen skinler tekrar oynarken yeniden indirilir.",
                 cacheBtn: "🗑️ Önbelleği Temizle",
+                resetAppTitle: "⚠️ Tüm Uygulama Verilerini Sıfırla (Factory Reset)",
+                resetAppSub: "Giriş bilgileri, ayarlar, indirilen tüm skinler, önbellek ve AppData klasörünü tamamen temizler.",
+                resetAppBtn: "🗑️ Tüm Verileri & AppData'yı Sıfırla",
                 accountMgmtSub: "Discord hesabınız ile oturum açtınız. Rolünüz:",
                 launchModalTitle: "MOD ENJEKSİYON MERKEZİ",
                 launchModalStatus: "CSLoL Motoru Oyuna Bağlanıyor...",
                 launchProgressInit: "Skin paketleri hazırlanıyor...",
                 launchCloseBtn: "Tamam / Oyuna Geç",
                 navFavorites: "Favorilerim",
+                navAutomaticLoadouts: "Otomatik Skinler",
+                autoStartTitle: "Şampiyon Kilidinde Otomatik Skin Yükleme",
+                autoStartSub: "Şampiyon kilitlendiğinde kayıtlı loadout otomatik başlatılır",
+                autoStartTooltip: "Otomatik skin yükleme",
                 favTitle: "Favorilerim",
                 favSub: "Beğendiğin skinlere buradan hızlıca erişebilirsin",
                 favClear: "Tüm Favorileri Temizle",
@@ -2746,12 +2971,19 @@
                 cacheTitle: "Downloaded Skin Cache",
                 cacheSub: "Clear all skin files downloaded from GitHub. Deleted skins will be re-downloaded on next play.",
                 cacheBtn: "🗑️ Clear Cache",
+                resetAppTitle: "⚠️ Factory Reset (Wipe All App Data)",
+                resetAppSub: "Permanently wipes all login sessions, settings, installed skins, caches, and AppData.",
+                resetAppBtn: "🗑️ Wipe All Data & AppData",
                 accountMgmtSub: "Logged in with your Discord account. Your Role:",
                 launchModalTitle: "MOD INJECTION CENTER",
                 launchModalStatus: "CSLoL Engine Connecting to Game...",
                 launchProgressInit: "Preparing skin packages...",
                 launchCloseBtn: "OK / Go to Game",
                 navFavorites: "Favorites",
+                navAutomaticLoadouts: "Automatic Skins",
+                autoStartTitle: "Automatic Skin Loading on Champion Lock",
+                autoStartSub: "When a champion is locked, its saved loadout starts automatically",
+                autoStartTooltip: "Automatic skin loading",
                 favTitle: "My Favorites",
                 favSub: "Quickly access skins you have saved as favorites",
                 favClear: "Clear All Favorites",
@@ -2863,6 +3095,13 @@
             setText('txt-nav-custom', dict.navCustom);
             setText('txt-nav-store', dict.navStore);
             setText('txt-nav-favorites', dict.navFavorites);
+            setText('txt-nav-automatic-loadouts', dict.navAutomaticLoadouts);
+            setText('txt-auto-start-title', dict.autoStartTitle);
+            setText('txt-auto-start-sub', dict.autoStartSub);
+            const autoStartLabel = document.getElementById('autoStartChampionLabel');
+            if (autoStartLabel) autoStartLabel.title = dict.autoStartTooltip;
+            setText('txt-automatic-loadouts-title', '★ ' + dict.navAutomaticLoadouts);
+            setText('txt-automatic-loadouts-sub', currentLang === 'tr' ? 'Yıldızla seçtiğin skinler burada görünür.' : 'Skins selected with a star appear here.');
             setText('txt-nav-themes', dict.navThemes);
             setText('txt-nav-settings', dict.navSettings);
 
@@ -3045,6 +3284,9 @@
             setText('txt-cache-title', dict.cacheTitle);
             setText('txt-cache-sub', dict.cacheSub);
             setText('txt-cache-btn', dict.cacheBtn);
+            setText('txt-reset-app-title', dict.resetAppTitle);
+            setText('txt-reset-app-sub', dict.resetAppSub);
+            setText('txt-reset-app-btn', dict.resetAppBtn);
             setHTML('txt-account-mgmt-sub', dict.accountMgmtSub ? `${dict.accountMgmtSub} <strong id="userRoleBadge" style="color:var(--accent-color);">${lang === 'tr' ? 'Skynix Kullanıcısı' : 'Skynix User'}</strong>` : null);
             setText('txt-launch-modal-title', dict.launchModalTitle);
             setText('txt-launch-close-btn', dict.launchCloseBtn);
@@ -3318,6 +3560,10 @@
             document.getElementById('performanceModeCheckbox').checked = isPerf;
             togglePerformanceMode(isPerf, false);
 
+            const autoStart = localStorage.getItem('autoStartChampion') !== 'false';
+            const autoStartCheckbox = document.getElementById('autoStartChampionCheckbox');
+            if (autoStartCheckbox) autoStartCheckbox.checked = autoStart;
+
             const isAdmin = localStorage.getItem('isAdminMode') === 'true';
             const adminChk = document.getElementById('adminModeCheckbox');
             if (adminChk) adminChk.checked = isAdmin;
@@ -3340,6 +3586,67 @@
             await fetchOnlineStoreMods();
         }
 
+        function toggleAutoStartChampion(enabled, showMsg = true) {
+            localStorage.setItem('autoStartChampion', enabled ? 'true' : 'false');
+            if (showMsg && typeof showToast === 'function') showToast(enabled
+                ? (currentLang === 'tr' ? 'Şampiyon kilitlenince otomatik başlatma açıldı.' : 'Auto-start on champion lock enabled.')
+                : (currentLang === 'tr' ? 'Şampiyon kilitlenince otomatik başlatma kapatıldı.' : 'Auto-start on champion lock disabled.'));
+        }
+        function getChampionLoadouts() {
+            try {
+                const raw = JSON.parse(localStorage.getItem('skynix_champion_loadouts') || '{}') || {};
+                const normalized = {};
+                Object.entries(raw).forEach(([key, value]) => {
+                    if (Array.isArray(value) && value.length) normalized[String(key)] = [{ ...value[0] }];
+                });
+                return normalized;
+            } catch (_) { return {}; }
+        }
+        function saveChampionLoadouts(loadouts) {
+            const normalized = {};
+            Object.entries(loadouts || {}).forEach(([key, value]) => {
+                if (Array.isArray(value) && value.length) normalized[String(key)] = [{ ...value[0] }];
+            });
+            localStorage.setItem('skynix_champion_loadouts', JSON.stringify(normalized));
+        }
+        function populateLoadoutChampionSelect() {
+            const select = document.getElementById('loadoutChampionSelect');
+            if (!select || !allChampions || !Object.keys(allChampions).length) return;
+            const previous = select.value;
+            select.innerHTML = `<option value="">${currentLang === 'tr' ? 'Şampiyon seçin' : 'Choose a champion'}</option>`;
+            Object.values(allChampions).sort((a,b) => a.name.localeCompare(b.name)).forEach(champ => {
+                const option = document.createElement('option');
+                option.value = champ.key || champ.id;
+                option.textContent = champ.name;
+                select.appendChild(option);
+            });
+            if (previous) select.value = previous;
+        }
+        function saveCurrentChampionLoadout() {
+            const key = document.getElementById('loadoutChampionSelect')?.value;
+            if (!key) return showToast(currentLang === 'tr' ? 'Önce bir şampiyon seçin.' : 'Choose a champion first.');            if (!activeQueue.length) return showToast(currentLang === 'tr' ? 'Aktif kuyruğunuz boş.' : 'Your active queue is empty.');
+            const champ = Object.values(allChampions || {}).find(c => String(c.key) === String(key) || c.id === key);
+            const champName = String(champ?.name || '').toLowerCase();
+            const champId = String(champ?.id || '').toLowerCase();
+            const filteredQueue = activeQueue.filter(item => {
+                const itemKey = String(item.champKey || '').toLowerCase();
+                const itemId = String(item.champId || item.champ || '').toLowerCase();
+                return itemKey === String(key).toLowerCase() || itemId === champId || itemId === champName;
+            });
+            if (!filteredQueue.length) return showToast(currentLang === 'tr' ? 'Bu şampiyon için aktif kuyrukta skin yok.' : 'No queued skin belongs to this champion.');
+            const loadouts = getChampionLoadouts();
+            loadouts[String(key)] = filteredQueue.map(item => ({ ...item }));
+            saveChampionLoadouts(loadouts);
+            showToast(currentLang === 'tr' ? 'Şampiyon loadout\'u kaydedildi.' : 'Champion loadout saved.');
+        }
+        function clearChampionLoadout() {
+            const key = document.getElementById('loadoutChampionSelect')?.value;
+            if (!key) return showToast(currentLang === 'tr' ? 'Önce bir şampiyon seçin.' : 'Choose a champion first.');
+            const loadouts = getChampionLoadouts();
+            delete loadouts[String(key)];
+            saveChampionLoadouts(loadouts);
+            showToast(currentLang === 'tr' ? 'Şampiyon loadout\'u temizlendi.' : 'Champion loadout cleared.');
+        }
         function togglePerformanceMode(enabled, showMsg = true) {
             if (enabled) {
                 document.body.classList.add('performance-mode');
@@ -3558,7 +3865,7 @@
             const msg = currentLang === 'tr' 
                 ? 'İndirilen tüm skin önbelleği silinecek. Skinler bir sonraki kullanımda GitHub\'dan yeniden indirilecek. Devam edilsin mi?'
                 : 'All downloaded skin cache will be cleared. Skins will be re-downloaded from GitHub on next use. Continue?';
-            const confirmed = confirm(msg);
+            const confirmed = await themedConfirm(msg, { okText: currentLang === 'tr' ? 'Önbelleği temizle' : 'Clear cache' });
             if (!confirmed) return;
             if (!window.electronAPI || !window.electronAPI.clearInstalledSkins) {
                 showToast(currentLang === 'tr' ? 'Bu özellik bu modda kullanılamıyor.' : 'Feature not available in this mode.');
@@ -3623,22 +3930,22 @@
                 if (matchedNav) matchedNav.classList.add('active');
             }
 
-            if (tabId === 'customSkins') renderCustomSkins();
-            if (tabId === 'champions') {
-                if (allChampions && Object.keys(allChampions).length > 0) {
-                    renderChampionGrid(Object.values(allChampions));
-                } else {
-                    fetchChampions();
+            if (!renderedTabViews.has(tabId)) {
+                if (tabId === 'customSkins') renderCustomSkins();
+                if (tabId === 'champions') {
+                    if (allChampions && Object.keys(allChampions).length > 0) renderChampionGrid(Object.values(allChampions));
+                    else fetchChampions();
                 }
-            }
-            if (tabId === 'store') {
-                renderStoreMods('all');
-                // GitHub mağaza kataloğunu her girişte yenile; uygulama açıkken eklenen modlar da görünür.
-                fetchOnlineStoreMods();
+                if (tabId === 'store') {
+                    renderStoreMods('all');
+                    fetchOnlineStoreMods();
+                }
+                renderedTabViews.add(tabId);
             }
             if (tabId === 'profile') updateProfileUI();
             if (tabId === 'home') updateProfileUI();
             if (tabId === 'favorites') renderFavoritesGrid();
+            if (tabId === 'automaticLoadouts') renderAutomaticLoadouts();
 
             // Discord Activity update
             if (window.electronAPI && window.electronAPI.updatePresence) {
@@ -3935,210 +4242,375 @@
             }
         }
 
-        async function injectActiveMods() {
-            if (isInjectingMods) return;
-            if (activeQueue.length === 0) {
-                showToast(currentLang === 'tr' ? 'Lütfen önce bir mod veya skin seçin!' : 'Please select a mod or skin first!');
-                return;
-            }
+async function injectActiveMods() {
+    if (isInjectingMods) return;
 
-            // Multi-mod layering destekleniyor: CSLoL gibi aynı şampiyon için birden fazla mod yüklenebilir.
-            // WAD dosya çakışmalarını inject engine (cslol-manager) çözer.
+    const hasQueueMods = Array.isArray(activeQueue) && activeQueue.length > 0;
+    const hasPinnedMods = Array.isArray(pinnedAlwaysOnMods) &&
+                          pinnedAlwaysOnMods.some(m => m && m.path);
 
-            let lolPath = localStorage.getItem('lolExePath');
-            if (!lolPath) {
-                showToast(currentLang === 'tr' ? 'LeagueClient.exe yolu taranıyor...' : 'Scanning LeagueClient.exe path...');
-                if (window.electronAPI && window.electronAPI.autoDetectLol) {
-                    lolPath = await window.electronAPI.autoDetectLol();
-                }
-                if (!lolPath) lolPath = 'C:\\Riot Games\\League of Legends\\LeagueClient.exe';
-                localStorage.setItem('lolExePath', lolPath);
-                document.getElementById('currentLolPathDisplay').innerText = lolPath;
-            }
+    if (!hasQueueMods && !hasPinnedMods) {
+        showToast(
+            currentLang === 'tr'
+                ? 'Lütfen önce einen Mod oder Skin auswählen!'
+                : 'Please select a mod or skin first!'
+        );
+        return;
+    }
 
-            isInjectingMods = true;
-            setTimeout(() => {
-                const loadingBtn = document.getElementById('masterStartBtn');
-                if (!loadingBtn) return;
-                loadingBtn.classList.add('injecting');
-                loadingBtn.style.setProperty('--inject-progress', '0%');
-                loadingBtn.onclick = openLaunchModal;
-                loadingBtn.innerHTML = `<span class="injecting-content"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83-2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg><span id="txt-start-btn">${currentLang === 'tr' ? 'SKİNLER UYARLANIYOR...' : 'INJECTING SKINS...'}</span><span class="injecting-percent" id="injectingPercent">0%</span></span>`;
-            }, 0);
-            const masterBtn = document.getElementById('masterStartBtn');
-            if (masterBtn) {
-                masterBtn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg><span id="txt-start-btn">${currentLang === 'tr' ? 'SKİNLER UYARLANIYOR...' : 'INJECTING SKINS...'}</span>`;
-            }
+    let lolPath = localStorage.getItem('lolExePath');
+    if (!lolPath) {
+        showToast(currentLang === 'tr' ? 'LeagueClient.exe yolu taranıyor...' : 'Scanning LeagueClient.exe path...');
+        if (window.electronAPI && window.electronAPI.autoDetectLol) {
+            lolPath = await window.electronAPI.autoDetectLol();
+        }
+        if (!lolPath) lolPath = 'C:\\Riot Games\\League of Legends\\LeagueClient.exe';
+        localStorage.setItem('lolExePath', lolPath);
+        const pathDisplay = document.getElementById('currentLolPathDisplay');
+        if (pathDisplay) pathDisplay.innerText = lolPath;
+    }
 
-            // Detaylı enjeksiyon merkezi yalnızca kullanıcı yükleme alanına tıklarsa açılır.
+    isInjectingMods = true;
 
-            let successCount = 0;
-            let errorCount = 0;
-            const total = activeQueue.length;
-            const preparedPaths = [];
-            const preparedNames = [];
+    try {
+        setTimeout(() => {
+            const loadingBtn = document.getElementById('masterStartBtn');
+            if (!loadingBtn) return;
+            loadingBtn.classList.add('injecting');
+            loadingBtn.style.setProperty('--inject-progress', '0%');
+            loadingBtn.onclick = openLaunchModal;
+            loadingBtn.innerHTML = `<span class="injecting-content"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83-2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg><span id="txt-start-btn">${currentLang === 'tr' ? 'SKİNLER UYARLANIYOR...' : 'INJECTING SKINS...'}</span><span class="injecting-percent" id="injectingPercent">0%</span></span>`;
+        }, 0);
 
-            // Yüklü modları tara
-            let diskSkins = [];
-            if (window.electronAPI && window.electronAPI.scanInstalledSkins) {
-                diskSkins = await window.electronAPI.scanInstalledSkins();
-            }
+        const masterBtn = document.getElementById('masterStartBtn');
+        if (masterBtn) {
+            masterBtn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83-2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg><span id="txt-start-btn">${currentLang === 'tr' ? 'SKİNLER UYARLANIYOR...' : 'INJECTING SKINS...'}</span>`;
+        }
 
-            let skinsDbFolder = localStorage.getItem('skinsDbFolder');
-            if (!skinsDbFolder && window.electronAPI && window.electronAPI.autoDetectDbFolder) {
-                skinsDbFolder = await window.electronAPI.autoDetectDbFolder();
-                if (skinsDbFolder) localStorage.setItem('skinsDbFolder', skinsDbFolder);
-            }
+        let successCount = 0;
+        let errorCount = 0;
 
-            for (let i = 0; i < activeQueue.length; i++) {
-                const item = activeQueue[i];
-                const cleanItemTitle = item.title.toLowerCase().trim();
+        // These arrays MUST be declared before they are used by the combined launch below.
+        const preparedPaths = [];
+        const preparedNames = [];
+        const preparedPinnedPaths = [];
+        const preparedPinnedNames = [];
 
-                // 1) customSkinsList içinde eşleşme ara
-                let skinData = customSkinsList.find(s => {
-                    if (!s) return false;
-                    const st = (s.title || '').toLowerCase();
-                    return st === cleanItemTitle || cleanItemTitle.includes(st) || st.includes(cleanItemTitle);
+        // Scan installed skins once. This is used only as a fallback for normal queue items.
+        let diskSkins = [];
+        if (window.electronAPI && window.electronAPI.scanInstalledSkins) {
+            diskSkins = await window.electronAPI.scanInstalledSkins();
+        }
+
+        let skinsDbFolder = localStorage.getItem('skinsDbFolder');
+        if (!skinsDbFolder && window.electronAPI && window.electronAPI.autoDetectDbFolder) {
+            skinsDbFolder = await window.electronAPI.autoDetectDbFolder();
+            if (skinsDbFolder) localStorage.setItem('skinsDbFolder', skinsDbFolder);
+        }
+
+        // ================================================================
+        // 1) PREPARE NORMAL ACTIVE-QUEUE MODS
+        // ================================================================
+        for (let i = 0; i < activeQueue.length; i++) {
+            const item = activeQueue[i];
+            const cleanItemTitle = String(item.title || '').toLowerCase().trim();
+
+            let skinData = customSkinsList.find(s => {
+                if (!s) return false;
+                const st = String(s.title || '').toLowerCase();
+                return st === cleanItemTitle || cleanItemTitle.includes(st) || st.includes(cleanItemTitle);
+            });
+
+            let selectedPath = item.path || (skinData ? skinData.path : null);
+
+            if (!selectedPath && window.electronAPI && window.electronAPI.findDbSkinFile) {
+                selectedPath = await window.electronAPI.findDbSkinFile({
+                    champKey: item.champKey,
+                    champId: item.champId,
+                    skinNum: item.skinNum,
+                    skinName: item.title
                 });
-                let selectedPath = item.path || (skinData ? skinData.path : null);
+            }
 
-                // 2) Skynix Data base Skins içinde otomatik ara (main.js kendi bulur)
-                if (!selectedPath && window.electronAPI && window.electronAPI.findDbSkinFile) {
-                    selectedPath = await window.electronAPI.findDbSkinFile({
-                        champKey: item.champKey,
-                        champId: item.champId,
-                        skinNum: item.skinNum,
-                        skinName: item.title
-                    });
+            if (!selectedPath && diskSkins.length > 0) {
+                const words = cleanItemTitle.split(/\s+/).filter(w => w.length > 2);
+                const matchedDisk = diskSkins.find(d => {
+                    const df = String(d.file || '').toLowerCase();
+                    return df.includes(cleanItemTitle) || words.some(w => df.includes(w));
+                });
+                if (matchedDisk) selectedPath = matchedDisk.path;
+            }
+
+            const total = Math.max(activeQueue.length, 1);
+            const percent = Math.round(((i + 1) / total) * 80);
+            const loadingButton = document.getElementById('masterStartBtn');
+            if (loadingButton) loadingButton.style.setProperty('--inject-progress', percent + '%');
+            const loadingPercent = document.getElementById('injectingPercent');
+            if (loadingPercent) loadingPercent.innerText = percent + '%';
+
+            const progressBar = document.getElementById('launchProgressBar');
+            const progressPercent = document.getElementById('launchProgressPercent');
+            const progressMsg = document.getElementById('launchProgressMsg');
+            if (progressBar) progressBar.style.width = percent + '%';
+            if (progressPercent) progressPercent.innerText = percent + '%';
+            if (progressMsg) progressMsg.innerText = currentLang === 'tr'
+                ? `'${item.title}' oyuna hazırlanıyor...`
+                : `Preparing '${item.title}' for game...`;
+
+            if (!selectedPath) {
+                if (item.skinNum === 0 || cleanItemTitle.includes('varsayılan') || cleanItemTitle.includes('default')) {
+                    showToast(currentLang === 'tr'
+                        ? `'${item.title}' orijinal oyunda mevcut (Ekstra mod yüklenmedi).`
+                        : `'${item.title}' is built-in base skin.`);
+                    successCount++;
+                    continue;
                 }
 
-                // 3) Eğer yoksa diskteki installed/ dosyaları arasında akıllı arama yap
-                if (!selectedPath && diskSkins.length > 0) {
-                    const words = cleanItemTitle.split(/\s+/).filter(w => w.length > 2);
-                    const matchedDisk = diskSkins.find(d => {
-                        const df = d.file.toLowerCase();
-                        return df.includes(cleanItemTitle) || words.some(w => df.includes(w));
-                    });
-                    if (matchedDisk) {
-                        selectedPath = matchedDisk.path;
-                    }
-                }
+                errorCount++;
+                console.warn(`[LAUNCH] '${item.title}' için veritabanında veya installed klasöründe dosya bulunamadı.`);
+                showToast(`'${item.title}' için dosya bulunamadı.`);
+                continue;
+            }
 
-                const percent = Math.round(((i + 1) / total) * 90);
-                const loadingButton = document.getElementById('masterStartBtn');
-                if (loadingButton) loadingButton.style.setProperty('--inject-progress', percent + '%');
-                const loadingPercent = document.getElementById('injectingPercent');
-                if (loadingPercent) loadingPercent.innerText = percent + '%';
-                document.getElementById('launchProgressBar').style.width = percent + '%';
-                document.getElementById('launchProgressPercent').innerText = percent + '%';
-                document.getElementById('launchProgressMsg').innerText = currentLang === 'tr' ? `'${item.title}' oyuna enjekte ediliyor...` : `Injecting '${item.title}' into game...`;
+            try {
+                const selectedFileName = String(selectedPath).split(/[\\/]/).pop();
+                const result = await window.electronAPI.runCslolSkin({
+                    skinPath: selectedPath,
+                    lolExePath: lolPath,
+                    prepareOnly: true
+                });
 
-                // 4) Bulunamadıysa varsayılan skin mi kontrol et, değilse hata ver
-                if (!selectedPath) {
-                    if (item.skinNum === 0 || cleanItemTitle.includes('varsayılan') || cleanItemTitle.includes('default')) {
-                        showToast(currentLang === 'tr' ? `'${item.title}' orijinal oyunda mevcut (Ekstra mod yüklenmedi).` : `'${item.title}' is built-in base skin.`);
-                        successCount++;
-                        continue;
-                    }
+                if (!result || !result.success) {
+                    showToast(currentLang === 'tr'
+                        ? `Başarısız (${item.title}): ${result?.message || 'Bilinmeyen hata'}`
+                        : `Failed (${item.title}): ${result?.message || 'Unknown error'}`);
                     errorCount++;
-                    console.warn(`[LAUNCH] '${item.title}' için veritabanında veya installed klasöründe dosya bulunamadı.`);
-                    showToast(`'${item.title}' için dosya bulunamadı.`);
+                } else {
+                    preparedPaths.push(selectedPath);
+                    preparedNames.push(
+                        result.modName ||
+                        selectedFileName
+                            .replace(/\.(fantome|zip|rar|7z)$/i, '')
+                            .replace(/[^a-zA-Z0-9_\- ]/g, '_')
+                    );
+                    successCount++;
+                    skinUsageCounts[item.title] = (skinUsageCounts[item.title] || 0) + 1;
+                }
+            } catch (err) {
+                showToast(currentLang === 'tr'
+                    ? `Sistem Hatası: ${err.message || 'Motorla iletişim kurulamadı.'}`
+                    : `System Error: ${err.message || 'Unable to communicate with engine.'}`);
+                errorCount++;
+            }
+        }
+
+        // ================================================================
+        // 2) PREPARE EVERY PINNED ALWAYS-ON MOD
+        // ================================================================
+        if (Array.isArray(pinnedAlwaysOnMods)) {
+            for (const pinned of pinnedAlwaysOnMods) {
+                if (!pinned || !pinned.path) continue;
+
+                // Automatic lock-in may already have put the global automatic
+                // mod into the temporary activeQueue. Do not prepare/inject it
+                // twice in that case.
+                const alreadyQueued = Array.isArray(activeQueue) && activeQueue.some(q =>
+                    q && q.path && String(q.path) === String(pinned.path)
+                );
+                if (alreadyQueued) {
+                    console.log(`[PINNED] Already present in active queue: ${pinned.title || pinned.path}`);
                     continue;
                 }
 
                 try {
-                    const selectedFileName = selectedPath.split(/[\\/]/).pop();
-                    const result = await window.electronAPI.runCslolSkin({
-                        skinPath: selectedPath,
+                    console.log(`[PINNED] Preparing always-on mod: ${pinned.title || pinned.path}`);
+
+                    const prep = await window.electronAPI.runCslolSkin({
+                        skinPath: pinned.path,
                         lolExePath: lolPath,
                         prepareOnly: true
                     });
 
-                    if (!result.success) {
-                        showToast(currentLang === 'tr' ? `Başarısız (${item.title}): ${result.message}` : `Failed (${item.title}): ${result.message}`);
+                    if (!prep || !prep.success) {
                         errorCount++;
-                    } else {
-                        preparedPaths.push(selectedPath);
-                        preparedNames.push(result.modName || selectedFileName.replace(/\.(fantome|zip|rar|7z)$/i, '').replace(/[^a-zA-Z0-9_\- ]/g, '_'));
-                        successCount++;
-                        skinUsageCounts[item.title] = (skinUsageCounts[item.title] || 0) + 1;
+                        console.warn(`[PINNED] '${pinned.title || pinned.path}' could not be prepared:`, prep?.message);
+                        continue;
                     }
+
+                    const pinnedFileName = String(pinned.path).split(/[\\/]/).pop();
+                    const pinnedModName = prep.modName ||
+                        pinnedFileName
+                            .replace(/\.(fantome|zip|rar|7z)$/i, '')
+                            .replace(/[^a-zA-Z0-9_\- ]/g, '_');
+
+                    preparedPinnedPaths.push(pinned.path);
+                    preparedPinnedNames.push(pinnedModName);
+                    successCount++;
+
+                    console.log(`[PINNED] Prepared: ${pinned.title || pinned.path} -> ${pinnedModName}`);
                 } catch (err) {
-                    showToast(currentLang === 'tr' ? `Sistem Hatası: ${err.message || 'Motorla iletişim kurulamadı.'}` : `System Error: ${err.message || 'Unable to communicate with engine.'}`);
                     errorCount++;
+                    console.warn(`[PINNED] Error preparing '${pinned.title || pinned.path}':`, err);
                 }
             }
+        }
 
-            // Tüm skin paketleri hazırlandıktan sonra tek overlay oluştur; böylece
-            // mağaza skinleri ve şampiyon kütüphanesi skinleri birlikte çalışır.
-            if (preparedPaths.length > 0 && window.electronAPI && window.electronAPI.runCslolSkin) {                // İlk overlay oluşturma bazen araçların dosya kilidini bırakmasını bekler.
-                // Kısa ve sınırlı retry ile ilk tıklamada güvenilir başlatma sağlanır.
-                let combinedResult = null;
-                for (let attempt = 0; attempt < 4; attempt++) {
-                    if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 900 * attempt));
-                    combinedResult = await window.electronAPI.runCslolSkin({
-                        skinPath: preparedPaths[0],
-                        lolExePath: lolPath,
-                        allMods: true,
-                        modNames: preparedNames
-                    });
-                    if (combinedResult && combinedResult.success) break;
+        // ================================================================
+        // 3) BUILD THE COMPLETE MOD LIST BEFORE CALLING CSLOL
+        // ================================================================
+        const allPreparedPaths = [
+            ...preparedPaths,
+            ...preparedPinnedPaths
+        ].filter(Boolean);
+
+        const allPreparedNames = [
+            ...preparedNames,
+            ...preparedPinnedNames
+        ].filter(Boolean);
+
+        console.log('[LAUNCH] Prepared normal mods:', preparedNames);
+        console.log('[LAUNCH] Prepared pinned mods:', preparedPinnedNames);
+        console.log('[LAUNCH] ALL mods:', allPreparedNames);
+        console.log('[LAUNCH] ALL paths:', allPreparedPaths);
+
+        // ================================================================
+        // 4) ONE COMBINED CSLOL LAUNCH FOR EVERYTHING
+        // ================================================================
+        if (allPreparedPaths.length > 0 &&
+            allPreparedNames.length > 0 &&
+            window.electronAPI &&
+            window.electronAPI.runCslolSkin) {
+
+            let combinedResult = null;
+            const validSkinPath = allPreparedPaths[0];
+
+            for (let attempt = 0; attempt < 5; attempt++) {
+                if (attempt > 0) {
+                    const waitMs = (combinedResult && combinedResult.busy)
+                        ? 1500 * attempt
+                        : 900 * attempt;
+                    await new Promise(resolve => setTimeout(resolve, waitMs));
                 }
-                if (!combinedResult || !combinedResult.success) {
-                    errorCount++;
-                    showToast(currentLang === 'tr' ? 'Skinler birlikte başlatılamadı.' : 'The skins could not be launched together.');
-                }
+
+                combinedResult = await window.electronAPI.runCslolSkin({
+                    skinPath: validSkinPath,
+                    lolExePath: lolPath,
+                    allMods: true,
+                    modNames: allPreparedNames
+                });
+
+                console.log(`[LAUNCH] Combined CSLoL attempt ${attempt + 1}:`, combinedResult);
+
+                if (combinedResult && combinedResult.success) break;
+                if (combinedResult && !combinedResult.busy) break;
             }
 
-            isInjectingMods = false;
-            localStorage.setItem('skinUsageCounts', JSON.stringify(skinUsageCounts));
-            updateProfileUI();
+            if (!combinedResult || !combinedResult.success) {
+                errorCount++;
+                const errDetail = combinedResult?.message
+                    ? String(combinedResult.message).substring(0, 160)
+                    : '';
 
-            document.getElementById('launchProgressBar').style.width = '100%';
-            document.getElementById('launchProgressPercent').innerText = '100%';
-            const finishedLoadingButton = document.getElementById('masterStartBtn');
-            if (finishedLoadingButton) {
-                finishedLoadingButton.style.setProperty('--inject-progress', '100%');
-                const finishedPercent = document.getElementById('injectingPercent');
-                if (finishedPercent) finishedPercent.innerText = '100%';
+                showToast(currentLang === 'tr'
+                    ? ('Skinler başlatılamadı.' + (errDetail ? ' (' + errDetail + ')' : ''))
+                    : ('Skins could not be launched.' + (errDetail ? ' (' + errDetail + ')' : '')));
+            }
+        } else if (hasPinnedMods && preparedPinnedNames.length === 0) {
+            errorCount++;
+            showToast(currentLang === 'tr'
+                ? 'Always-On modlar hazırlanamadı.'
+                : 'The Always-On mods could not be prepared.');
+        }
+
+        localStorage.setItem('skinUsageCounts', JSON.stringify(skinUsageCounts));
+        updateProfileUI();
+
+        const finalProgressBar = document.getElementById('launchProgressBar');
+        const finalProgressPercent = document.getElementById('launchProgressPercent');
+        const finalLoadingButton = document.getElementById('masterStartBtn');
+        const finalInjectingPercent = document.getElementById('injectingPercent');
+        if (finalProgressBar) finalProgressBar.style.width = '100%';
+        if (finalProgressPercent) finalProgressPercent.innerText = '100%';
+        if (finalLoadingButton) finalLoadingButton.style.setProperty('--inject-progress', '100%');
+        if (finalInjectingPercent) finalInjectingPercent.innerText = '100%';
+
+        if (successCount > 0 && errorCount === 0 && allPreparedNames.length > 0) {
+            skinsActive = true;
+            if (window.electronAPI && window.electronAPI.setSkinRunningState) {
+                window.electronAPI.setSkinRunningState(true);
+            }
+            if (window.electronAPI && window.electronAPI.showSkinStartedNotification) {
+                window.electronAPI.showSkinStartedNotification(typeof currentLang !== 'undefined' ? currentLang : null);
             }
 
-            if (successCount > 0 && errorCount === 0) {
-                skinsActive = true;
-                if (window.electronAPI && window.electronAPI.setSkinRunningState) {
-                    window.electronAPI.setSkinRunningState(true);
-                }
-                if (window.electronAPI && window.electronAPI.showSkinStartedNotification) {
-                    window.electronAPI.showSkinStartedNotification(typeof currentLang !== 'undefined' ? currentLang : null);
-                }
-                const btn = document.getElementById('masterStartBtn');
+            const btn = document.getElementById('masterStartBtn');
+            if (btn) {
                 btn.classList.remove('injecting');
                 btn.classList.add('stop-mode');
                 btn.onclick = stopActiveMods;
                 btn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg><span id="txt-start-btn">${currentLang === 'tr' ? 'SKİNLERİ DURDUR' : 'STOP SKINS'}</span>`;
-                renderActiveLauncherWidget();
-                document.getElementById('launchModalStatusText').innerText = currentLang === 'tr' ? '[BAŞARILI] Tüm modlar oyuna enjekte edildi!' : '[SUCCESS] All mods injected into game!';
-                document.getElementById('launchProgressMsg').innerText = currentLang === 'tr' ? 'Tamamlandı! Oyuna sorunsuz girebilirsin.' : 'Completed! You can now join the game.';
-                showToast(currentLang === 'tr' ? 'Tüm modlar eksiksiz ve sorunsuz tamamlandı!' : 'All mods injected successfully!');
-                if (window.electronAPI && window.electronAPI.updatePresence) {
-                    const count = activeQueue.length;
-                    const firstSkin = activeQueue[0] ? activeQueue[0].title : '';
-                    const skinSummary = count === 1 ? firstSkin : (count > 1 ? `${firstSkin} (+${count - 1} mod)` : '');
-                    const stateStr = currentLang === 'tr' ? `🎮 Oyunda (${count} Kostüm Aktif)` : `🎮 In Game (${count} Skins Active)`;
-                    const detailsStr = skinSummary || (currentLang === 'tr' ? 'Özel Kostümler Çalışıyor' : 'Custom Skins Running');
-                    window.electronAPI.updatePresence(stateStr, detailsStr);
-                }
-            } else if (errorCount > 0) {
-                skinsActive = false;
-                const btnErr = document.getElementById('masterStartBtn');
+            }
+
+            renderActiveLauncherWidget();
+            const statusText = document.getElementById('launchModalStatusText');
+            const progressMsg = document.getElementById('launchProgressMsg');
+            if (statusText) statusText.innerText = currentLang === 'tr'
+                ? '[BAŞARILI] Tüm modlar oyuna enjekte edildi!'
+                : '[SUCCESS] All mods injected into game!';
+            if (progressMsg) progressMsg.innerText = currentLang === 'tr'
+                ? 'Tamamlandı! Oyuna sorunsuz girebilirsin.'
+                : 'Completed! You can now join the game.';
+
+            showToast(currentLang === 'tr'
+                ? `Tüm modlar eksiksiz ve sorunsuz tamamlandı! (${allPreparedNames.length} mod)`
+                : `All mods injected successfully! (${allPreparedNames.length} mods)`);
+
+            if (window.electronAPI && window.electronAPI.updatePresence) {
+                const count = activeQueue.length;
+                const firstSkin = activeQueue[0] ? activeQueue[0].title : '';
+                const skinSummary = count === 1
+                    ? firstSkin
+                    : (count > 1 ? `${firstSkin} (+${count - 1} mod)` : '');
+                const stateStr = currentLang === 'tr'
+                    ? `🎮 Oyunda (${count} Kostüm Aktif)`
+                    : `🎮 In Game (${count} Skins Active)`;
+                const detailsStr = skinSummary ||
+                    (currentLang === 'tr' ? 'Özel Kostümler Çalışıyor' : 'Custom Skins Running');
+                window.electronAPI.updatePresence(stateStr, detailsStr);
+            }
+        } else {
+            skinsActive = false;
+            const btnErr = document.getElementById('masterStartBtn');
+            if (btnErr) {
                 btnErr.classList.remove('injecting');
                 btnErr.classList.remove('stop-mode');
                 btnErr.onclick = injectActiveMods;
                 btnErr.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span id="txt-start-btn">${currentLang === 'tr' ? 'SKİNLERİ BAŞLAT' : 'LAUNCH SKINS'}</span>`;
-                document.getElementById('launchModalStatusText').innerText = currentLang === 'tr' ? '[UYARI] Bazı modlarda hata oluştu!' : '[WARNING] Some mods failed!';
             }
+
+            const statusText = document.getElementById('launchModalStatusText');
+            if (statusText) statusText.innerText = currentLang === 'tr'
+                ? '[UYARI] Bazı modlarda hata oluştu!'
+                : '[WARNING] Some mods failed!';
+        }
+    } catch (err) {
+        console.error('[LAUNCH] injectActiveMods fatal error:', err);
+        skinsActive = false;
+
+        const btnErr = document.getElementById('masterStartBtn');
+        if (btnErr) {
+            btnErr.classList.remove('injecting');
+            btnErr.classList.remove('stop-mode');
+            btnErr.onclick = injectActiveMods;
         }
 
+        showToast(currentLang === 'tr'
+            ? `Enjeksiyon hatası: ${err.message || err}`
+            : `Injection error: ${err.message || err}`);
+    } finally {
+        isInjectingMods = false;
+    }
+}
         async function stopActiveMods() {
             if (window.electronAPI && window.electronAPI.stopCslolSkin) {
                 await window.electronAPI.stopCslolSkin();
@@ -4249,6 +4721,7 @@
                 const cRes = await fetch(`https://ddragon.leagueoflegends.com/cdn/${latestLoLVersion}/data/${currentLang === 'tr' ? 'tr_TR' : 'en_US'}/champion.json`);
                 const cData = await cRes.json();
                 allChampions = cData.data;
+                populateLoadoutChampionSelect();
 
                 renderChampionGrid(Object.values(allChampions));
             } catch (e) {
@@ -4259,6 +4732,7 @@
         
         function toggleArtMode() {
             useLoadingArt = !useLoadingArt;
+
             applyLanguage(currentLang);
             const activeChamp = document.getElementById('selectedChampTitleName').innerText;
             if (activeChamp && activeChamp.includes('-')) {
@@ -4322,6 +4796,24 @@
             filterChampions();
             input.focus();
         }
+        let championSearchTimer = null;
+        function debouncedFilterChampions() {
+            clearTimeout(championSearchTimer);
+            championSearchTimer = setTimeout(filterChampions, 80);
+        }
+
+        
+        function normalizeSearchText(str) {
+            return String(str || '')
+                .replace(/İ/g, 'i').replace(/I/g, 'ı')
+                .replace(/ğ/g, 'g').replace(/Ğ/g, 'g')
+                .replace(/ü/g, 'u').replace(/Ü/g, 'u')
+                .replace(/ş/g, 's').replace(/Ş/g, 's')
+                .replace(/ö/g, 'o').replace(/Ö/g, 'o')
+                .replace(/ç/g, 'c').replace(/Ç/g, 'c')
+                .toLowerCase().trim();
+        }
+
         function filterChampions() {
             const q = document.getElementById('championSearch').value.toLowerCase();
             const filtered = Object.values(allChampions).filter(c => 
@@ -4332,7 +4824,43 @@
 
         const champDetailCache = {};
 
-        async function loadChampionSkins(champId) {
+        function setChampionLoadoutFromSkin(title, img, champKey, skinNum, champId, champName) {
+            const item = { title, img, champKey: String(champKey || ''), skinNum: Number(skinNum), champId, champ: champName || champId, category: 'champion' };
+            const loadouts = getChampionLoadouts();
+            const loadoutKey = String(champKey || champId);
+            const existing = loadouts[loadoutKey] || loadouts[String(champId)] || [];
+            const current = Array.isArray(existing) ? existing[0] : null;
+            const isSame = !!current && (
+                String(current.title || '').trim() === String(title || '').trim() &&
+                String(current.champKey || loadoutKey) === loadoutKey
+            );
+
+            if (isSame) {
+                delete loadouts[loadoutKey];
+                if (String(champId) !== loadoutKey) delete loadouts[String(champId)];
+            } else {
+                // Exactly ONE champion skin belongs to a champion loadout.
+                loadouts[loadoutKey] = [item];
+                if (String(champId) !== loadoutKey && loadouts[String(champId)]) delete loadouts[String(champId)];
+            }
+            saveChampionLoadouts(loadouts);
+
+            // Only the exact selected skin gets the active star. Do not match
+            // the whole champion, and do not let chromas with the same skinNum
+            // light up accidentally.
+            document.querySelectorAll('.loadout-star-btn').forEach(btn => {
+                const btnChamp = String(btn.dataset.champKey || '');
+                const btnTitle = String(btn.dataset.skinTitle || '');
+                const sameChampion = btnChamp === loadoutKey || btnChamp === String(champId);
+                const exactSkin = btnTitle === String(title || '');
+                btn.classList.toggle('active', !isSame && sameChampion && exactSkin);
+            });
+
+            if (typeof renderAutomaticLoadouts === 'function') renderAutomaticLoadouts();
+            if (typeof showToast === 'function') showToast(isSame
+                ? ('Automatic skin removed for ' + (champName || champId) + '.')
+                : ('Automatic skin saved for ' + (champName || champId) + '.'));
+        }        async function loadChampionSkins(champId) {
             try {
                 let champData;
                 if (champDetailCache[champId]) {
@@ -4397,6 +4925,19 @@
                     if (assetResponse.ok) latestSkinAssets = (await assetResponse.json()).skins || [];
                 } catch (_) {}
 
+                const savedLoadouts = getChampionLoadouts();
+                const savedChampionLoadout = savedLoadouts[String(champData.key)] || savedLoadouts[String(champId)] || [];
+                const savedLoadoutSkin = Array.isArray(savedChampionLoadout) ? savedChampionLoadout[0] : null;
+
+                // Aynı skin adı bazı veri kaynaklarında birden fazla ID ile gelebilir.
+
+
+                // İlk geçerli kartı koru; splashı olmayan mükerrer kartı gösterme.
+
+
+                const renderedSkinNames = new Set();
+
+
                 for (const s of champData.skins) {
                     const lowerSkinName = s.name.toLowerCase();
 
@@ -4408,6 +4949,30 @@
                     if (lowerSkinName.includes(' rengi') || lowerSkinName.includes(' chroma') || lowerSkinName.endsWith(' rengi')) continue;
 
                     const skinName = s.name;
+
+
+                    const skinIdentity = String(skinName)
+
+
+                        .normalize("NFD")
+
+
+                        .replace(/[\\u0300-\\u036f]/g, "")
+
+
+                        .replace(/\\s+/g, " ")
+
+
+                        .trim()
+
+
+                        .toLowerCase();
+
+
+                    if (renderedSkinNames.has(skinIdentity)) continue;
+
+
+                    renderedSkinNames.add(skinIdentity);
 
                     const overrideKey = `${champId}_${s.num}`;
                     const nameKey = skinName.toLowerCase().trim();
@@ -4445,8 +5010,8 @@
                         <div class="champion-card" onclick="toggleChampionLibrarySkinQueue('${skinName.replace(/'/g, "\\'")}', '${splashImg}', '${champData.key}', ${s.num}, '${champId}')">
                             ${chromaBtnHTML}
                             <button class="fav-heart-btn ${isFav ? 'fav-active' : ''}" onclick="event.stopPropagation(); toggleFavorite('${favKey}', '${skinName.replace(/'/g, "\\'")}', '${cardImg}', '${champData.key}', ${s.num}, '${champId}', this)" title="${currentLang === 'tr' ? 'Favorilere Ekle' : 'Add to Favorites'}">
-                                <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                            </button>
+                                <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+                             <button type="button" data-champ-key="${String(champData.key)}" data-skin-num="${s.num}" data-skin-title="${String(skinName).replace(/"/g, '&quot;')}" class="loadout-star-btn ${savedLoadoutSkin && String(savedLoadoutSkin.title || '') === String(skinName) ? 'active' : ''}" onclick="event.preventDefault(); event.stopImmediatePropagation(); setChampionLoadoutFromSkin(${JSON.stringify(skinName).replace(/"/g, '&quot;')}, ${JSON.stringify(splashImg).replace(/"/g, '&quot;')}, ${JSON.stringify(String(champData.key)).replace(/"/g, '&quot;')}, ${s.num}, ${JSON.stringify(champId).replace(/"/g, '&quot;')}, ${JSON.stringify(champData.name).replace(/"/g, '&quot;')}); return false;" title="${currentLang === 'tr' ? 'Bu skini otomatik loadout yap' : 'Use this skin as automatic loadout'}">★</button>
                             <img src="${cardImg}" alt="${skinName}" loading="lazy" decoding="async" onerror="loadSkinImageFallback(this, '${imageKey}')">
                             <div class="champion-info">
                                 <div class="champion-name">${skinName}</div>
@@ -4515,10 +5080,13 @@
             const nextIndex = current ? Math.max(0, candidates.indexOf(current) + 1) : 1;
             const next = candidates[nextIndex];
             if (!next) {
+                // Tüm kaynaklar başarısızsa yalnızca bu görsel kaldırılır; kart işlemleri kalır.
                 image.onerror = null;
-                const parts = imageKey ? imageKey.split('_') : [];
-                if (parts.length >= 2) {
-                    image.src = `https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${parts[0]}_${parts[1]}.jpg`;
+                image.style.display = 'none';
+                const failedCard = image.closest('.champion-card, .skin-card, .chroma-thumb-card');
+                if (failedCard) {
+                    failedCard.classList.add('missing-splash');
+                    failedCard.style.display = 'none';
                 }
                 return;
             }
@@ -4595,6 +5163,7 @@
                                     onerror="this.onerror=null; this.src='${baseImgUrl}';"
                                     loading="lazy" decoding="async">
                                 <button class="fav-heart-btn ${chromaIsFav ? 'fav-active' : ''}" style="top:8px;left:auto;right:8px;width:30px;height:30px;" onclick="event.stopPropagation(); toggleFavorite('${chromaFavKey}', '${escapedTitle}', '${chromaImgUrl}', '${champNumericId}', ${skinNum}, '${champId}', this)" title="${currentLang === 'tr' ? 'Favorilere Ekle' : 'Add to Favorites'}"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+                                <button type="button" class="loadout-star-btn chroma-loadout-star" data-champ-key="${champNumericId}" data-skin-num="${skinNum}" data-skin-title="${escapedTitle.replace(/"/g, '&quot;')}" onclick="event.preventDefault(); event.stopImmediatePropagation(); setChampionLoadoutFromSkin(&quot;${escapedTitle}&quot;, &quot;${chromaImgUrl}&quot;, &quot;${champNumericId}&quot;, ${skinNum}, &quot;${champId}&quot;, &quot;${champId}&quot;); return false;" title="Otomatik skin olarak ayarla">★</button>
                                 <div class="chroma-add-badge">+</div>
                                 <div class="chroma-thumb-name">
                                     <span style="display:flex; align-items:center; gap:4px; justify-content:center; flex-wrap:wrap;">
@@ -4807,6 +5376,145 @@
             return `custom:${skin.id || skin.path || skin.title || skin.file}`;
         }
 
+        function getChampionIdentityValues(skin) {
+            if (!skin) return [];
+            const details = parseSkinCardDetails(skin);
+            return [
+                skin.champId,
+                skin.champKey,
+                skin.champ,
+                details?.champ,
+                skin.name
+            ]
+                .filter(v => v !== undefined && v !== null && String(v).trim() !== '')
+                .map(v => String(v).trim().toLowerCase());
+        }
+
+        function championLoadoutMatchesSkin(loadoutItem, skin) {
+            if (!loadoutItem || !skin) return false;
+            const skinIds = new Set(getChampionIdentityValues(skin));
+            const loadoutIds = getChampionIdentityValues(loadoutItem);
+            return loadoutIds.some(id => skinIds.has(id));
+        }
+
+        function championLoadoutIsExactSkin(loadoutItem, skin) {
+            if (!loadoutItem || !skin) return false;
+            const savedPath = String(loadoutItem.path || '').trim();
+            const currentPath = String(skin.path || '').trim();
+            if (savedPath && currentPath) return savedPath === currentPath;
+            return String(loadoutItem.title || '').trim() === String(skin.title || parseSkinCardDetails(skin).title || '').trim();
+        }
+
+        function setCustomSkinLoadout(event, index) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const skin = customSkinsList[index];
+            if (!skin) return;
+
+            const category = detectSkinCategory(skin);
+            if (category !== 'champion' && category !== 'chroma') {
+                return togglePinnedMod(event, index);
+            }
+
+            const details = parseSkinCardDetails(skin);
+            const champKey = String(
+                skin.champId || skin.champKey || skin.champ || details.champ || 'Custom Mod'
+            ).trim();
+            const loadouts = getChampionLoadouts();
+
+            // Find ALL old entries belonging to this champion, regardless of
+            // whether an older version stored the key as ID, key or name.
+            const matchingKeys = Object.entries(loadouts)
+                .filter(([key, list]) => {
+                    const item = Array.isArray(list) && list.length ? list[0] : null;
+                    if (!item) return false;
+                    const keyValue = String(key).trim().toLowerCase();
+                    return getChampionIdentityValues(skin).includes(keyValue) ||
+                           championLoadoutMatchesSkin(item, skin);
+                })
+                .map(([key]) => key);
+
+            let isAlreadySelected = false;
+            for (const key of matchingKeys) {
+                const item = Array.isArray(loadouts[key]) && loadouts[key].length
+                    ? loadouts[key][0]
+                    : null;
+                if (championLoadoutIsExactSkin(item, skin)) {
+                    isAlreadySelected = true;
+                }
+                delete loadouts[key];
+            }
+
+            if (!isAlreadySelected) {
+                // Store ONLY the clicked skin. Never store the current queue,
+                // all skins from a champion, or all entries from a category.
+                loadouts[champKey] = [{
+                    title: String(skin.title || details.title || '').trim(),
+                    img: skin.img || details.img || '',
+                    path: skin.path || '',
+                    champKey,
+                    champId: skin.champId || '',
+                    champ: skin.champ || details.champ || champKey,
+                    skinNum: skin.skinNum,
+                    category: 'champion'
+                }];
+            }
+
+            saveChampionLoadouts(loadouts);
+            renderAutomaticLoadouts();
+            renderCustomSkins();
+            showToast(isAlreadySelected
+                ? String(skin.title || details.title || '') + ' automatic loadout removed.'
+                : String(skin.title || details.title || '') + ' saved as automatic skin.');
+        }
+
+        function togglePinnedMod(event, index) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            const skin = customSkinsList[index];
+            if (!skin) return;
+
+            const category = detectSkinCategory(skin);
+            if (category === 'champion' || category === 'chroma') {
+                return setCustomSkinLoadout(event, index);
+            }
+
+            // Global Automatic Mods are an independent multi-select.  Toggle
+            // exactly this mod; never modify another item in the same category.
+            const key = String(skin.path || skin.title || '').trim();
+            if (!key) return;
+
+            const existingIndex = Array.isArray(pinnedAlwaysOnMods)
+                ? pinnedAlwaysOnMods.findIndex(item => {
+                    const itemKey = String(item?.path || item?.title || '').trim();
+                    return itemKey === key;
+                })
+                : -1;
+
+            if (existingIndex >= 0) {
+                pinnedAlwaysOnMods.splice(existingIndex, 1);
+            } else {
+                pinnedAlwaysOnMods.push({
+                    ...skin,
+                    category,
+                    source: 'automatic-global'
+                });
+            }
+
+            localStorage.setItem('skynix_pinnedMods', JSON.stringify(pinnedAlwaysOnMods));
+            renderAutomaticLoadouts();
+            renderCustomSkins();
+            showToast(existingIndex >= 0
+                ? (currentLang === 'tr' ? 'Otomatik mod kaldırıldı.' : 'Automatic mod removed.')
+                : (currentLang === 'tr' ? 'Otomatik mod eklendi.' : 'Automatic mod added.'));
+        }
+
         function toggleCustomFavorite(event, key, title, img, champ, champId) {
             if (event) event.stopPropagation();
             toggleFavorite(key, title, img, champ, null, champId, event && event.currentTarget);
@@ -4827,53 +5535,91 @@
 
         let activeDraggingCustomSkinIndex = null;
         let activeEditingPresetId = null;
+function isGlobalAutomaticMod(skin) {
+    if (!skin) return false;
+    const category = detectSkinCategory(skin);
+    return category !== 'champion' && category !== 'chroma';
+}
+function renderCustomSkins() {
+    const grid = document.getElementById('customSkinGrid');
+    if (!grid) return;
 
-        function renderCustomSkins() {
-            const grid = document.getElementById('customSkinGrid');
-            if (!grid) return;
-            const searchVal = (document.getElementById('customSkinSearch')?.value || '').toLowerCase();
-            const dict = dictionary[currentLang];
-            grid.innerHTML = '';
+    const searchVal =
+        (document.getElementById('customSkinSearch')?.value || '').toLowerCase();
 
-            let customList = customSkinsList.map(s => ({ ...s, category: s.category || 'champion' }));
-            if (currentCustomFilter !== 'all') {
-                customList = customList.filter(s => detectSkinCategory(s) === currentCustomFilter);
-            }
-            if (searchVal) {
-                customList = customList.filter(s => (s.title || '').toLowerCase().includes(searchVal) || (s.champ || '').toLowerCase().includes(searchVal));
-            }
+    const dict = dictionary[currentLang];
 
-            // ÖZEL SKİNLERİ RENDER ET (Sürüklenebilir Kartlar)
-            if (customList.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-muted);">${dict.emptyCustomSkins}</div>`;
-                return;
-            }
+    grid.innerHTML = '';
 
-            customList.forEach((skin, idx) => {
-                const details = parseSkinCardDetails(skin);
+    let customList = customSkinsList.map(s => ({
+        ...s,
+        category: s.category || 'champion'
+    }));
+
+    if (currentCustomFilter !== 'all') {
+        customList = customList.filter(
+            s => detectSkinCategory(s) === currentCustomFilter
+        );
+    }
+
+    if (searchVal) {
+        customList = customList.filter(
+            s =>
+                (s.title || '').toLowerCase().includes(searchVal) ||
+                (s.champ || '').toLowerCase().includes(searchVal)
+        );
+    }
+
+    if (customList.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">
+                ${dict.emptyCustomSkins}
+            </div>
+        `;
+        return;
+    }
+
+customList.forEach((skin, idx) => {
+    const originalIdx = customSkinsList.findIndex(s =>
+        (s.path || s.title) === (skin.path || skin.title)
+    );
+    const actionIdx = originalIdx >= 0 ? originalIdx : idx;
+    const details = parseSkinCardDetails(skin);
                 const isQueued = activeQueue.some(x => x.title === (skin.title || details.title));
                 const favoriteKey = getCustomFavoriteKey(skin);
                 const isFavoriteSkin = isFavorite(favoriteKey);
-                const categoryLabel = customCategoryLabel(detectSkinCategory(skin));
-                
+                const categoryLabel = customCategoryLabel(detectSkinCategory(skin));     
                 grid.innerHTML += `
                     <div class="custom-card-frame" 
                          draggable="true" 
-                         ondragstart="handleCustomSkinDragStart(event, ${idx})" 
+                         ondragstart="handleCustomSkinDragStart(event, ${actionIdx})" 
                          style="cursor:pointer;" 
                          onclick="toggleSkinQueue('${(skin.title || details.title).replace(/'/g, "\\'")}', '${details.img}')">
-                        
-                        <div class="three-dots-btn" onclick="toggleDropdownMenu(event, ${idx})">⋮</div>
-                        <div class="card-menu-dropdown" id="dropdown-${idx}">
-                            <div class="dropdown-item" onclick="event.stopPropagation(); openEditSkinModal(${idx})">${dict.btnEdit}</div>
-                            <div class="dropdown-item" onclick="event.stopPropagation(); exportCustomSkin(${idx})">${dict.btnExport || 'Dışa Aktar (.fantome)'}</div>
-                            <div class="dropdown-item" onclick="event.stopPropagation(); runSkinFixerAction(${idx})">Skyfixer (Otomatik Onar)</div>
-                            <div class="dropdown-item danger" onclick="event.stopPropagation(); deleteCustomSkin(${idx})">${dict.btnDelete}</div>
+                        <div class="three-dots-btn" onclick="toggleDropdownMenu(event, ${actionIdx})">⋮</div>
+                        <div class="card-menu-dropdown" id="dropdown-${actionIdx}">
+                            <div class="dropdown-item" onclick="event.stopPropagation(); openEditSkinModal(${actionIdx})">${dict.btnEdit}</div>
+                            <div class="dropdown-item" onclick="event.stopPropagation(); exportCustomSkin(${actionIdx})">${dict.btnExport || 'Dışa Aktar (.fantome)'}</div>
+                            <div class="dropdown-item" onclick="event.stopPropagation(); runSkinFixerAction(${actionIdx})">Skyfixer (Otomatik Onar)</div>
+                            <div class="dropdown-item danger" onclick="event.stopPropagation(); deleteCustomSkin(${actionIdx})">${dict.btnDelete}</div>
                         </div>
 
                         <div class="custom-card-banner" style="background-image: url('${details.img || 'https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Yasuo_0.jpg'}');">
                             <span class="custom-card-badge">${categoryLabel}</span>
-                            <button class="fav-heart-btn custom-fav-heart ${isFavoriteSkin ? 'fav-active' : ''}" onclick="toggleCustomFavorite(event, '${favoriteKey.replace(/'/g, "\\'")}', '${details.title.replace(/'/g, "\\'")}', '${(details.img || '').replace(/'/g, "\\'")}', '${details.champ.replace(/'/g, "\\'")}', '${String(skin.champId || details.champ || '').replace(/'/g, "\\'")}')" title="${currentLang === 'tr' ? 'Favorilere ekle/kaldır' : 'Add/remove favorite'}"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
+                            <button class="fav-heart-btn custom-fav-heart ${isFavoriteSkin ? 'fav-active' : ''}" onclick="toggleCustomFavorite(event, '${favoriteKey.replace(/'/g, "\\'")}', '${details.title.replace(/'/g, "\\'")}', '${(details.img || '').replace(/'/g, "\\'")}', '${details.champ.replace(/'/g, "\\'")}', '${String(skin.champId || details.champ || '').replace(/'/g, "\\'")}')" title="${currentLang === 'tr' ? 'Favorilere ekle/kaldır' : 'Add/remove favorite'}"><svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button><button type="button" class="loadout-star-btn custom-loadout-star ${(() => {
+    const cat = detectSkinCategory(skin);
+    const key = String(skin.path || skin.title || '').trim();
+    if (cat !== 'champion' && cat !== 'chroma') {
+        return pinnedAlwaysOnMods.some(m => String(m?.path || m?.title || '').trim() === key) ? 'active' : '';
+    }
+    const loadouts = getChampionLoadouts();
+    return Object.values(loadouts).some(list => {
+        const item = Array.isArray(list) && list.length ? list[0] : null;
+        return championLoadoutMatchesSkin(item, skin) && championLoadoutIsExactSkin(item, skin);
+    }) ? 'active' : '';
+})()}"
+    data-action-index="${actionIdx}"
+    onclick="${detectSkinCategory(skin) !== 'champion' && detectSkinCategory(skin) !== 'chroma' ? `togglePinnedMod(event, ${actionIdx})` : `setCustomSkinLoadout(event, ${actionIdx})`}"
+    title="${detectSkinCategory(skin) !== 'champion' && detectSkinCategory(skin) !== 'chroma' ? 'Als Automatic Mod aktivieren/deaktivieren' : 'Otomatik skin olarak ayarla'}">★</button>
                         </div>
                         <div class="custom-card-body">
                             <div class="custom-skin-champ">${details.champ}</div>
@@ -5762,6 +6508,80 @@ async function exportCustomSkin(idx) {
             });
         }
 
+        function removeChampionLoadout(key, title) {
+            const loadouts = getChampionLoadouts();
+            const list = Array.isArray(loadouts[key]) ? loadouts[key] : [];
+            if (list.length && (!title || list[0].title === title)) delete loadouts[key];
+            saveChampionLoadouts(loadouts);
+            document.querySelectorAll('.loadout-star-btn').forEach(btn => {
+                if (String(btn.dataset.champKey || '') === String(key) && (!title || String(btn.dataset.skinTitle || '') === String(title))) btn.classList.remove('active');
+            });
+            renderAutomaticLoadouts();
+            renderCustomSkins();
+            if (typeof showToast === 'function') showToast('Automatic skin removed.');
+        }
+
+        function renderAutomaticLoadouts() {
+            const grid = document.getElementById('automaticLoadoutsGrid');
+            if (!grid) return;
+
+            const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+            }[ch]));
+            const jsEsc = value => String(value ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+            const championEntries = Object.entries(getChampionLoadouts())
+                .flatMap(([key, list]) => (Array.isArray(list) ? list : [])
+                    .map(item => ({ type: 'champion', key, item })));
+
+            const globalEntries = Array.isArray(pinnedAlwaysOnMods)
+                ? pinnedAlwaysOnMods
+                    .filter(item => item && item.path && isGlobalAutomaticMod(item))
+                    .map(item => ({ type: 'global', key: item.path || item.title, item }))
+                : [];
+
+            const entries = [...championEntries, ...globalEntries];
+            if (!entries.length) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:35px 20px;color:var(--text-muted);">No automatic skins or mods yet.</div>';
+                return;
+            }
+
+            grid.innerHTML = entries.map(({type, key, item}) => {
+                const title = esc(item.title || item.champ || (type === 'global' ? 'Automatic Mod' : 'Skin'));
+                const champ = esc(type === 'global'
+                    ? customCategoryLabel(item.category || detectSkinCategory(item))
+                    : (item.champ || item.champId || key));
+                const img = esc(item.img || '');
+                const safeKey = jsEsc(key);
+                const safeTitle = jsEsc(item.title || '');
+
+                if (type === 'global') {
+                    return '<div class="champion-card" style="position:relative;">' +
+                        '<button type="button" class="loadout-star-btn active" style="top:8px;right:8px;left:auto;" data-global-path="' + esc(item.path || '') + '" onclick="event.stopPropagation(); togglePinnedModByKey(this.dataset.globalPath)" title="Remove automatic mod">★</button>' +
+                        '<img src="' + img + '" alt="' + title + '" loading="lazy" onerror="this.style.opacity=.35">' +
+                        '<div class="champion-info"><div class="champion-name">' + title + '</div><div class="champion-title">' + champ + '</div></div>' +
+                        '</div>';
+                }
+
+                return '<div class="champion-card" style="position:relative;">' +
+                    '<button type="button" class="loadout-star-btn active" style="top:8px;right:8px;left:auto;" data-key="' + esc(key) + '" data-title="' + esc(item.title || '') + '" onclick="event.stopPropagation(); removeChampionLoadout(this.dataset.key, this.dataset.title)" title="Remove automatic skin">★</button>' +
+                    '<img src="' + img + '" alt="' + title + '" loading="lazy" onerror="this.style.opacity=.35">' +
+                    '<div class="champion-info"><div class="champion-name">' + title + '</div><div class="champion-title">' + champ + '</div></div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function togglePinnedModByKey(path) {
+            const idx = Array.isArray(pinnedAlwaysOnMods)
+                ? pinnedAlwaysOnMods.findIndex(m => m && String(m.path || '') === String(path || ''))
+                : -1;
+            if (idx < 0) return;
+            pinnedAlwaysOnMods.splice(idx, 1);
+            localStorage.setItem('skynix_pinnedMods', JSON.stringify(pinnedAlwaysOnMods));
+            renderAutomaticLoadouts();
+            renderCustomSkins();
+            if (typeof showToast === 'function') showToast(currentLang === 'tr' ? 'Otomatik mod kaldırıldı.' : 'Automatic mod removed.');
+        }
         function clearAllFavorites() {
             if (Object.keys(skinFavorites).length === 0) {
                 showToast(currentLang === 'tr' ? 'Zaten favori skin yok!' : 'No favorites to clear!');
@@ -5790,7 +6610,7 @@ async function exportCustomSkin(idx) {
 
                 if (updateData && updateData.hasUpdate) {
                     const localVer = updateData.currentVersion || '1.0.0';
-                    const remoteVer = updateData.latestVersion || '1.0.5';
+                    const remoteVer = updateData.latestVersion || '1.0.9';
                     if (result) {
                         result.style.color = '#f59e0b';
                         result.innerText = currentLang === 'tr'
@@ -5803,7 +6623,7 @@ async function exportCustomSkin(idx) {
                     const localVersion = String(
                         updateData?.currentVersion
                         || document.getElementById('appVersionLabel')?.textContent
-                        || '1.0.5'
+                        || '1.0.9'
                     ).replace(/^v/i, '');
                     if (result) {
                         result.style.color = '#22c55e';
@@ -6285,130 +7105,232 @@ async function exportCustomSkin(idx) {
 
 // ════════ OTOMATİK DESTANSI / EFSANEVİ ŞAMPİYON KOSTÜMÜ SEÇİCİ ════════
 async function handleAutoPickedChampion(championId) {
+    // Automatic Skin has two independent scopes:
+    //   1. champion-specific automatic skin/loadout
+    //   2. global automatic non-champion mods (HUD/Audio/Map/Other)
+    //
+    // IMPORTANT: do NOT launch a separate CSLoL process here.  The normal
+    // injectActiveMods() pipeline already knows how to prepare and combine
+    // multiple mods.  It also adds the global always-on mods automatically.
+    // The temporary queue below is only used to tell that pipeline which
+    // champion skin should be injected for this lock-in.
+    if (localStorage.getItem('autoStartChampion') === 'false') return;
+    if (isInjectingMods) return;
+
     try {
-        const foundChamp = Object.values(allChampions).find(c => String(c.key) === String(championId));
-        if (!foundChamp) return;
-        const champId = foundChamp.id;
-        const champKey = String(foundChamp.key);
-        const champNameLower = (foundChamp.name || '').toLowerCase().trim();
-        const champIdLower = champId.toLowerCase().trim();
-
-        // 1. KAPSAMLI KONTROL: Sırada bu şampiyona ait bir skin (Özel Mod, Mağaza Modu veya Riot Skini) VAR MI?
-        const hasExistingSkin = activeQueue.some(item => {
-            // İlgili modun detaylarını bul
-            const customObj = customSkinsList.find(s => s.title === item.title || s.file === item.title) || item;
-            const details = typeof parseSkinCardDetails === 'function' ? parseSkinCardDetails(customObj) : customObj;
-
-            const itemChampId = String(item.champId || customObj.champId || '').toLowerCase().trim();
-            const itemChamp = String(item.champ || customObj.champ || details.champ || '').toLowerCase().trim();
-            const itemChampKey = String(item.champKey || customObj.champKey || '').trim();
-            const itemTitle = String(item.title || customObj.title || '').toLowerCase().trim();
-            const itemPath = String(item.path || customObj.path || customObj.file || '').toLowerCase().trim();
-
-            // Karşılaştırma senaryoları:
-            // a) Key veya ID eşleşmesi (Örn: "238" veya "Zed")
-            if (itemChampKey && itemChampKey === champKey) return true;
-            if (itemChampId && (itemChampId === champIdLower || itemChampId === champNameLower)) return true;
-
-            // b) Şampiyon adı eşleşmesi (Örn: "Zed", "Wisteria Talon")
-            if (itemChamp && (itemChamp === champNameLower || itemChamp === champIdLower)) return true;
-
-            // c) Başlık veya dosya yolu içinde şampiyon adı geçiyor mu (Örn: "Zed - Galaxy Slayer.fantome", "Talon")
-            if (itemTitle.includes(champNameLower) || itemTitle.includes(champIdLower)) return true;
-            if (itemPath.includes(champNameLower) || itemPath.includes(champIdLower)) return true;
-
-            return false;
-        });
-
-        if (hasExistingSkin) {
-            console.log(`[AutoPick] ${foundChamp.name} için zaten bir skin sırada mevcut, yeni bir skin eklenmedi.`);
-            // Eğer motor çalışmıyorsa mevcut skini otomatik başlat
-            if (!skinsActive && !isInjectingMods && typeof injectActiveMods === 'function') {
-                setTimeout(() => injectActiveMods(), 400);
-            }
+        const foundChamp = Object.values(allChampions || {}).find(
+            c => String(c.key) === String(championId) || String(c.id) === String(championId)
+        );
+        if (!foundChamp) {
+            console.warn('[AutoPick] Champion not found:', championId);
             return;
         }
 
-        const res = await fetch(`https://ddragon.leagueoflegends.com/cdn/${latestLoLVersion}/data/${currentLang === 'tr' ? 'tr_TR' : 'en_US'}/champion/${champId}.json`);
-        const data = await res.json();
-        const champData = data.data[champId];
-        if (!champData || !champData.skins || champData.skins.length <= 1) return;
+        const champId = String(foundChamp.id);
+        const champKey = String(foundChamp.key);
+        const champName = String(foundChamp.name || '');
 
-        const validSkins = champData.skins.filter(s => {
-            if (s.num === 0) return false;
-            const name = s.name.toLowerCase();
-            if (name === 'default' || name === champData.name.toLowerCase()) return false;
-            if (name.includes('(') && name.includes(')')) return false;
-            if (name.includes('traditional') || name.includes('legacy') || name.includes('eski')) return false;
-            if (name.includes(' rengi') || name.includes(' chroma') || name.endsWith(' rengi')) return false;
-            return true;
-        });
-        if (validSkins.length === 0) return;
+        // Never destroy the user's manually selected queue. Automatic
+        // injection gets its own temporary queue and restores it afterwards.
+        const previousQueue = Array.isArray(activeQueue)
+            ? activeQueue.map(item => ({ ...item }))
+            : [];
 
-        const premiumKeywords = ['gece', 'şafak', 'nightbringer', 'dawnbringer', 'project', 'pulsefire', 'yıldız muhafızı', 'star guardian', 'ruh çiçeği', 'spirit blossom', 'high noon', 'kovboy', 'dark star', 'kara yıldız', 'kraliyet', 'god', 'tanrı', 'mecha', 'dragon', 'ejder', 'battle', 'savaş', 'kanlı ay', 'blood moon', 'kristal gül', 'coven', 'cadılar meclisi', 'empyrean', 'sonsuz karanlık', 'elementalist', 'dj', 'gun goddess', 'kod adı', 'prestij', 'prestige', 'kozmik', 'cosmic', 'efsanevi', 'legendary', 'destansı', 'epic', 'galaksiler', 'kda', 'true damage', 'heartsteel', 'ışık muhafızı', 'sentinel'];
+        let temporaryQueueWasSet = false;
 
-        let premiumSkins = validSkins.filter(s => premiumKeywords.some(kw => s.name.toLowerCase().includes(kw)));
-        if (premiumSkins.length === 0) {
-            premiumSkins = validSkins.slice(-Math.min(3, validSkins.length));
+        // ---------------------------------------------------------------
+        // 1) Find the champion-specific saved automatic skin/loadout.
+        // ---------------------------------------------------------------
+        const savedLoadouts = getChampionLoadouts();
+        const candidates = [champKey, champId, champName]
+            .filter(Boolean)
+            .map(v => String(v).toLowerCase().trim());
+
+        const championLoadout = Object.entries(savedLoadouts).find(([key, value]) =>
+            candidates.includes(String(key).toLowerCase().trim()) &&
+            Array.isArray(value) && value.length > 0
+        )?.[1] || null;
+
+        if (Array.isArray(championLoadout) && championLoadout.length > 0) {
+            activeQueue = championLoadout.map(item => ({ ...item }));
+            temporaryQueueWasSet = true;
+            console.log('[AutoPick] Using saved automatic loadout:', champName, activeQueue);
+        } else {
+            // -----------------------------------------------------------
+            // 2) No saved skin -> choose the same automatic Riot skin as
+            //    the old system did.
+            // -----------------------------------------------------------
+            const locale = currentLang === 'tr' ? 'tr_TR' : 'en_US';
+            const res = await fetch(
+                `https://ddragon.leagueoflegends.com/cdn/${latestLoLVersion}/data/${locale}/champion/${champId}.json`
+            );
+            const data = await res.json();
+            const champData = data?.data?.[champId];
+            if (!champData || !Array.isArray(champData.skins) || champData.skins.length <= 1) {
+                console.warn('[AutoPick] No usable skins for:', champName);
+                return;
+            }
+
+            const validSkins = champData.skins.filter(s => {
+                if (s.num === 0) return false;
+                const name = String(s.name || '').toLowerCase();
+                if (!name || name === 'default' || name === String(champData.name || '').toLowerCase()) return false;
+                if (name.includes('(') && name.includes(')')) return false;
+                if (name.includes('traditional') || name.includes('legacy') || name.includes('eski')) return false;
+                if (name.includes(' rengi') || name.includes(' chroma') || name.endsWith(' rengi')) return false;
+                return true;
+            });
+
+            if (validSkins.length === 0) return;
+
+            const premiumKeywords = [
+                'gece', 'şafak', 'nightbringer', 'dawnbringer', 'project', 'pulsefire',
+                'yıldız muhafızı', 'star guardian', 'ruh çiçeği', 'spirit blossom',
+                'high noon', 'kovboy', 'dark star', 'kara yıldız', 'kraliyet', 'god',
+                'tanrı', 'mecha', 'dragon', 'ejder', 'battle', 'savaş', 'kanlı ay',
+                'blood moon', 'kristal gül', 'coven', 'cadılar meclisi', 'empyrean',
+                'sonsuz karanlık', 'elementalist', 'dj', 'gun goddess', 'kod adı',
+                'prestij', 'prestige', 'kozmik', 'cosmic', 'efsanevi', 'destansı',
+                'legendary', 'epic', 'galaksiler', 'kda', 'true damage', 'heartsteel',
+                'ışık muhafızı', 'sentinel'
+            ];
+
+            let premiumSkins = validSkins.filter(s =>
+                premiumKeywords.some(kw => String(s.name || '').toLowerCase().includes(kw))
+            );
+            if (premiumSkins.length === 0) {
+                premiumSkins = validSkins.slice(-Math.min(3, validSkins.length));
+            }
+
+            const chosenSkin = premiumSkins[Math.floor(Math.random() * premiumSkins.length)];
+            const splashImg = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champId}_${chosenSkin.num}.jpg`;
+
+            activeQueue = [{
+                title: chosenSkin.name,
+                img: splashImg,
+                champKey,
+                champId,
+                skinNum: chosenSkin.num,
+                champ: champName,
+                category: 'champion'
+            }];
+            temporaryQueueWasSet = true;
+
+            console.log('[AutoPick] Selected automatic Riot skin:', chosenSkin.name);
         }
-        const chosenSkin = premiumSkins[Math.floor(Math.random() * premiumSkins.length)];
-        const splashImg = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champId}_${chosenSkin.num}.jpg`;
 
-        await launchCombinedModSet(chosenSkin, champData, champId, splashImg);
+        // Add every globally marked non-champion Automatic Mod to the SAME
+        // temporary queue as the champion automatic skin. They are independent
+        // of the locked champion, so HUD/Audio/Map/Other mods always come along.
+        if (Array.isArray(pinnedAlwaysOnMods)) {
+            for (const pinned of pinnedAlwaysOnMods) {
+                if (!pinned || !pinned.path) continue;
+                const exists = activeQueue.some(item =>
+                    item && item.path && String(item.path) === String(pinned.path)
+                );
+                if (!exists) {
+                    activeQueue.push({
+                        title: pinned.title || String(pinned.path).split(/[\\/]/).pop(),
+                        img: pinned.img || '',
+                        path: pinned.path,
+                        champKey: '',
+                        champId: '',
+                        champ: pinned.champ || '',
+                        category: pinned.category || detectSkinCategory(pinned),
+                        source: 'automatic-global'
+                    });
+                }
+            }
+        }
+
+        console.log('[AutoPick] Temporary combined automatic queue:', activeQueue);
+        renderActiveLauncherWidget();
+        updateProfileUI();
+
+        // ---------------------------------------------------------------
+        // 3) IMPORTANT: use the normal injection pipeline.
+        //    injectActiveMods() will prepare:
+        //      - the champion automatic skin in activeQueue
+        //      - ALL global automatic HUD/Audio/Map/Other mods
+        //    and send them together through the known-good CSLoL path.
+        // ---------------------------------------------------------------
+        if (isInjectingMods) {
+            console.log('[AutoPick] Injection already running; skipping duplicate lock event.');
+        } else if (typeof injectActiveMods === 'function') {
+            // A new champion lock must replace the previous automatic set.
+            // Stop the old CSLoL instance first, then inject the new champion
+            // skin together with ALL global Automatic Mods.
+            if (skinsActive) {
+                console.log('[AutoPick] Previous automatic set is active; stopping it before re-injection.');
+                try { await stopActiveMods(); } catch (stopErr) {
+                    console.warn('[AutoPick] Could not stop previous automatic set:', stopErr);
+                }
+            }
+            console.log('[AutoPick] Starting combined automatic injection for:', champName,
+                        'global mods:', Array.isArray(pinnedAlwaysOnMods) ? pinnedAlwaysOnMods.length : 0);
+            await injectActiveMods();
+        }
+
+        // Restore the user's queue after the injection pipeline has finished.
+        // The prepared CSLoL mod set remains active, while the UI/queue is not
+        // polluted by the temporary automatic champion selection.
+        console.log('[AutoPick] Automatic injection finished.');
     } catch (e) {
         console.warn('[AutoPick] Hata:', e);
+        showToast(currentLang === 'tr'
+            ? `Otomatik skin hatası: ${e.message || e}`
+            : `Automatic skin error: ${e.message || e}`);
+    } finally {
+        if (temporaryQueueWasSet) {
+            activeQueue = previousQueue;
+            localStorage.setItem('skynix_activeQueue', JSON.stringify(activeQueue));
+            renderActiveLauncherWidget();
+            renderCustomSkins();
+            updateProfileUI();
+            console.log('[AutoPick] Restored previous manual queue. Global automatic mods remain independent.');
+        }
     }
 }
 
+// Kept as a compatibility wrapper for older code paths. Automatic champion
+// injection must always go through injectActiveMods(), because that function
+// combines the champion skin and every global automatic non-champion mod.
 async function launchCombinedModSet(chosenSkin, champData, champId, splashImg) {
-    let lolPath = localStorage.getItem('lolExePath') || 'C:\\Riot Games\\League of Legends\\LeagueClient.exe';
+    if (!chosenSkin || !champData) return;
 
-    // 1) Champion-Skin vorbereiten (prepareOnly, liefert modName zurück)
-    let dbFolder = localStorage.getItem('skinsDbFolder');
-    let skinPath = await window.electronAPI.findDbSkinFile({
-        champKey: champData.key, champId, skinNum: chosenSkin.num, skinName: chosenSkin.name
-    });
-    let championModName = null;
-    if (skinPath) {
-        const prep = await window.electronAPI.runCslolSkin({ skinPath, lolExePath: lolPath, prepareOnly: true });
-        if (prep.success) championModName = prep.modName;
-    }
+    const previousQueue = Array.isArray(activeQueue)
+        ? activeQueue.map(item => ({ ...item }))
+        : [];
 
-    // 2) Gepinnte HUD/Audio/Map-Mods vorbereiten
-    const preparedPinnedNames = [];
-    for (const pinned of pinnedAlwaysOnMods) {
-        if (!pinned.path) continue;
-        const prep = await window.electronAPI.runCslolSkin({ skinPath: pinned.path, lolExePath: lolPath, prepareOnly: true });
-        if (prep.success) preparedPinnedNames.push(prep.modName);
-    }
+    activeQueue = [{
+        title: chosenSkin.name,
+        img: splashImg || `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champId}_${chosenSkin.num}.jpg`,
+        champKey: String(champData.key || ''),
+        champId: String(champId || ''),
+        skinNum: chosenSkin.num,
+        champ: String(champData.name || ''),
+        category: 'champion'
+    }];
 
-    const allModNames = [championModName, ...preparedPinnedNames].filter(Boolean);
-    if (allModNames.length === 0) return;
-
-    // 3) Einen einzigen kombinierten Overlay-Start mit allen Mods
-    const result = await window.electronAPI.runCslolSkin({
-        skinPath: skinPath || (pinnedAlwaysOnMods[0]?.path),
-        lolExePath: lolPath,
-        allMods: true,
-        modNames: allModNames
-    });
-
-    if (result.success) {
-        skinsActive = true;
-        window.electronAPI.setSkinRunningState(true);
-        // UI-Status aktualisieren wie in injectActiveMods()
-        const btn = document.getElementById('masterStartBtn');
-        if (btn) {
-            btn.classList.remove('injecting'); btn.classList.add('stop-mode');
-            btn.onclick = stopActiveMods;
-            btn.innerHTML = `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg><span id="txt-start-btn">${currentLang==='tr'?'SKİNLERİ DURDUR':'STOP SKINS'}</span>`;
-        }
-        showToast(currentLang==='tr' ? `${champData.name}: ${chosenSkin.name} + ${preparedPinnedNames.length} HUD/Mod aktif!` : `${champData.name}: ${chosenSkin.name} + ${preparedPinnedNames.length} HUD/mods active!`);
-    } else {
-        showToast(currentLang==='tr' ? 'Otomatik enjeksiyon başarısız: ' + result.message : 'Auto-inject failed: ' + result.message);
+    try {
+        await injectActiveMods();
+    } finally {
+        activeQueue = previousQueue;
+        localStorage.setItem('skynix_activeQueue', JSON.stringify(activeQueue));
+        renderActiveLauncherWidget();
+        renderCustomSkins();
+        updateProfileUI();
     }
 }
         window.addEventListener('DOMContentLoaded', async () => {
+            if (window.electronAPI?.onLcuChampionPicked) {
+                window.electronAPI.onLcuChampionPicked((data) => {
+                    if (data && data.championId) {
+                        handleAutoPickedChampion(data.championId);
+                    }
+                });
+            }
+
             // Oturum Kontrolü
             const currentUserCheck = localStorage.getItem('skynix_current_user');
             const ls = document.getElementById('loginScreen');
@@ -6445,17 +7367,11 @@ async function launchCombinedModSet(chosenSkin, champData, champId, splashImg) {
 
             // Özel Skinler listesini ilk render et
             renderCustomSkins();
+            renderAutomaticLoadouts();
             fetchChampions();
-            fetchOnlineStoreMods();
             renderActiveLauncherWidget();
 
-            if (window.electronAPI?.onLcuChampionPicked) {
-                window.electronAPI.onLcuChampionPicked((data) => {
-                    if (data && data.championId) {
-                        handleAutoPickedChampion(data.championId);
-                    }
-                });
-            }
+
 
             const savedNavPos = localStorage.getItem('navPos') || 'side';
             document.getElementById('navPosSelect').value = savedNavPos;
@@ -6497,7 +7413,7 @@ async function launchCombinedModSet(chosenSkin, champData, champId, splashImg) {
             const laterBtn = document.getElementById('appUpdateBtnLater');
 
             if (curVerEl) curVerEl.innerText = `v${updateInfo.currentVersion || '1.0.0'}`;
-            if (latVerEl) latVerEl.innerText = `v${updateInfo.latestVersion || '1.0.5'}`;
+            if (latVerEl) latVerEl.innerText = `v${updateInfo.latestVersion || '1.0.9'}`;
             if (subTitleEl) subTitleEl.innerText = updateInfo.releaseTitle || (currentLang === 'tr' ? 'Skynix Manager için yeni bir güncelleme mevcut' : 'A new update is available for Skynix Manager');
 
             if (changelogEl) {
@@ -6638,6 +7554,31 @@ async function launchCombinedModSet(chosenSkin, champData, champId, splashImg) {
 
             let progress = 0;
             const bar = document.getElementById('progressBar');
+
+            // Spawn floating particles for loading screen
+            (function spawnLoadingParticles() {
+                const container = document.getElementById('lsParticles');
+                if (!container) return;
+                for (let i = 0; i < 18; i++) {
+                    const p = document.createElement('div');
+                    p.className = 'ls-particle';
+                    const size = 2 + Math.random() * 4;
+                    p.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + (Math.random()*100) + '%;animation-duration:' + (4 + Math.random()*6) + 's;animation-delay:' + (Math.random()*4) + 's;opacity:0';
+                    container.appendChild(p);
+                }
+            })();
+
+            // Update version label on loading screen
+            (async function() {
+                try {
+                    if (window.electronAPI && window.electronAPI.getAppVersion) {
+                        const v = await window.electronAPI.getAppVersion();
+                        const el = document.getElementById('lsVersionLabel');
+                        if (el) el.textContent = 'SKYNIX MANAGER — v' + v;
+                    }
+                } catch (_) {}
+            })();
+
             const interval = setInterval(() => {
                 progress += 50;
                 if (bar) bar.style.width = progress + '%';
@@ -6646,7 +7587,7 @@ async function launchCombinedModSet(chosenSkin, champData, champId, splashImg) {
                     const loader = document.getElementById('loadingScreen');
                     if (loader) {
                         loader.style.opacity = '0';
-                        setTimeout(() => loader.style.display = 'none', 200);
+                        setTimeout(() => { loader.style.display = 'none'; }, 600);
                     }
                 }
             }, 30);
@@ -6746,6 +7687,156 @@ async function launchCombinedModSet(chosenSkin, champData, champId, splashImg) {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureDiscordInvite, { once:true });
   else ensureDiscordInvite();
   setTimeout(ensureDiscordInvite, 500);
+})();
+
+        async function resetAllApplicationData() {
+            const isTr = currentLang === 'tr';
+            const confirmMsg = isTr
+                ? '⚠️ DİKKAT: Bu işlem tüm ayarlarınızı, Discord oturumunuzu, indirilen ve yüklenen tüm skinlerinizi, önbelleği ve AppData klasöründeki tüm Skynix verilerini TAMAMEN silecektir!\n\nUygulama sıfırlanıp fabrika ayarlarına dönecek. Devam etmek istiyor musunuz?'
+                : '⚠️ WARNING: This will permanently delete all your settings, Discord login session, installed/downloaded skins, cache, and all Skynix AppData!\n\nThe app will reset to initial factory state. Do you want to proceed?';
+
+            if (!(await themedConfirm(confirmMsg, { title: isTr ? 'Uygulama verilerini sıfırla' : 'Reset application data', okText: isTr ? 'Sıfırla' : 'Reset' }))) return;
+
+            try {
+                showToast(isTr ? 'Tüm veriler ve AppData temizleniyor...' : 'Wiping all app data & AppData...');
+                if (window.electronAPI && window.electronAPI.clearAllAppData) {
+                    await window.electronAPI.clearAllAppData();
+                }
+                localStorage.clear();
+                sessionStorage.clear();
+                showToast(isTr ? '✅ Tüm veriler temizlendi! Uygulama yeniden başlatılıyor...' : '✅ All data wiped! Reloading app...');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1200);
+            } catch (err) {
+                showToast(isTr ? 'Sıfırlama hatası: ' + err.message : 'Reset error: ' + err.message);
+            }
+        }
+
+    </script><div id="skynixConfirmModal" class="modal" style="display:none;position:fixed;inset:0;z-index:100000;align-items:center;justify-content:center;background:rgba(2,4,12,.78);backdrop-filter:blur(14px);"><div style="width:min(500px,calc(100vw - 32px));background:linear-gradient(145deg,var(--bg-card,#141827),var(--bg-main,#090c16));border:1px solid var(--border-color,#33406e);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.65),0 0 32px var(--accent-glow,rgba(99,102,241,.22));overflow:hidden;"><div style="display:flex;align-items:center;gap:12px;padding:18px 20px;border-bottom:1px solid rgba(255,255,255,.08);"><div style="width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:rgba(245,158,11,.16);color:#fbbf24;font-size:20px;">!</div><div><div id="skynixConfirmTitle" style="font-size:15px;font-weight:800;color:var(--text-main,#fff);">Onay gerekli</div><div id="skynixConfirmSub" style="font-size:11px;color:var(--text-muted,#8993b1);margin-top:3px;">Bu işlem geri alınamaz.</div></div><button id="skynixConfirmClose" style="margin-left:auto;background:none;border:0;color:var(--text-muted,#9aa4c2);font-size:22px;cursor:pointer;">×</button></div><div id="skynixConfirmMessage" style="padding:22px 20px;color:var(--text-main,#e8ecff);font-size:13px;line-height:1.65;white-space:pre-line;"></div><div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;background:rgba(0,0,0,.18);border-top:1px solid rgba(255,255,255,.06);"><button id="skynixConfirmCancel" class="btn-secondary" style="min-width:100px;background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);">İptal</button><button id="skynixConfirmOk" class="btn-primary" style="min-width:120px;background:var(--accent-color);color:var(--accent-contrast,#020617);box-shadow:0 5px 18px var(--accent-glow);">Devam et</button></div></div></div>
+<script>
+function themedConfirm(message, options = {}) { const modal=document.getElementById('skynixConfirmModal'); if(!modal) return Promise.resolve(window.confirm(message)); const tr=currentLang !== 'en'; document.getElementById('skynixConfirmTitle').textContent=options.title || (tr?'Onay gerekli':'Confirmation required'); document.getElementById('skynixConfirmSub').textContent=tr?'Bu işlem geri alınamaz.':'This action cannot be undone.'; document.getElementById('skynixConfirmMessage').textContent=message; document.getElementById('skynixConfirmCancel').textContent=tr?'İptal':'Cancel'; document.getElementById('skynixConfirmOk').textContent=options.okText || (tr?'Devam et':'Continue'); modal.style.display='flex'; return new Promise(resolve=>{ const close=document.getElementById('skynixConfirmClose'),cancel=document.getElementById('skynixConfirmCancel'),ok=document.getElementById('skynixConfirmOk'); const cleanup=()=>{close.onclick=null;cancel.onclick=null;ok.onclick=null;modal.onclick=null;document.removeEventListener('keydown',key)}; const finish=value=>{modal.style.display='none';cleanup();resolve(value)}; const key=e=>{if(e.key==='Escape')finish(false)}; close.onclick=cancel.onclick=()=>finish(false); ok.onclick=()=>finish(true); modal.onclick=e=>{if(e.target===modal)finish(false)}; document.addEventListener('keydown',key); ok.focus(); }); }
+</script><div id="skynixOnboarding" aria-hidden="true">
+  <section class="skynix-wizard" role="dialog" aria-modal="true" aria-labelledby="skynixWizardTitle">
+    <header class="skynix-wizard-head"><div class="skynix-wizard-mark"><svg viewBox="0 0 24 24"><path d="M12 3l2.1 5.7L20 11l-5.9 2.3L12 19l-2.1-5.7L4 11l5.9-2.3L12 3Z"/><path d="M18.5 3v3M20 4.5h-3M5.5 17v3M7 18.5H4"/></svg></div><div><div class="skynix-wizard-title" id="skynixWizardTitle">Skynix Manager</div><div style="font-size:11px;color:var(--text-muted,#94a3b8);margin-top:3px" id="skynixWizardSub">Kurulum sihirbazı</div></div><div class="skynix-wizard-step" id="skynixWizardStep">1 / 5</div></header>
+    <div class="skynix-wizard-progress"><i id="skynixWizardProgress"></i></div>
+    <div class="skynix-wizard-body">
+      <div class="skynix-wizard-page active" data-step="1"><h2 id="wizLangTitle">Dilini seç</h2><p id="wizLangSub">Skynix Manager deneyimini hangi dilde kullanmak istersin?</p><div class="skynix-choice-grid"><button class="skynix-choice" data-lang="tr"><strong>Türkçe</strong><small>Arayüz ve bildirimler Türkçe</small></button><button class="skynix-choice" data-lang="en"><strong>English</strong><small>Interface and notifications in English</small></button></div></div>
+      <div class="skynix-wizard-page" data-step="2"><h2 id="wizLolTitle">LoL kurulumunu bul</h2><p id="wizLolSub">League of Legends.exe otomatik olarak aranıyor.</p><div class="skynix-detect"><div class="skynix-detect-icon" id="wizLolIcon">…</div><div><strong id="wizLolStatus">Taranıyor…</strong><div class="skynix-detect-path" id="wizLolPath">Lütfen bekleyin</div></div></div><button class="skynix-wizard-btn" id="wizLolManual" style="margin-top:14px">Manuel seç</button></div>
+      <div class="skynix-wizard-page" data-step="3"><h2 id="wizThemeTitle">Temanı seç</h2><p id="wizThemeSub">Temalar arasından seçim yap; arayüz anında güncellensin.</p><div class="skynix-all-themes" id="skynixWizardThemes"></div></div>
+      <div class="skynix-wizard-page" data-step="4"><h2 id="wizGuideTitle">Skynix’i keşfet</h2><p id="wizGuideSub">İlk skinini ekle, favorini seç ve oyuna hazırla.</p><div class="skynix-guide-grid"><div class="skynix-guide"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg><strong id="wizGuide1Title">Kütüphaneni oluştur</strong><small id="wizGuide1Text">Fantome dosyasını sürükle-bırak veya mağazadan indir.</small></div><div class="skynix-guide"><svg viewBox="0 0 24 24"><path d="M6 4h12v16H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><strong id="wizGuide2Title">Kuyruğunu hazırla</strong><small id="wizGuide2Text">Kalp ve yıldız ile skinlerini favorile, sonra kuyruğa ekle.</small></div><div class="skynix-guide"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><path d="m16 14 2 2 4-5"/></svg><strong id="wizGuide3Title">Tek tıkla çalıştır</strong><small id="wizGuide3Text">Skinleri başlat; sorun olursa Skyfixer ile onar.</small></div></div></div>
+      <div class="skynix-wizard-page" data-step="5"><div class="skynix-final"><img class="skynix-final-logo" src="icon.png" alt="Skynix Manager"><h2 id="wizFinalTitle">SKYNIX MANAGER'A HOŞ GELDİN!</h2><p id="wizFinalText">Oyun deneyimini baştan yaratmaya hazır ol.</p></div></div>
+    </div>
+    <footer class="skynix-wizard-foot"><button class="skynix-wizard-btn" id="wizBack">Geri</button><button class="skynix-wizard-btn primary" id="wizNext">İleri</button></footer>
+  </section>
+</div>
+<div class="skynix-badges-card" id="skynixBadgesCard" style="display:none"><div class="skynix-level-row"><div class="skynix-level-name" id="skynixLevelName">Lv. 1 Acemi</div><div class="skynix-level-xp" id="skynixLevelXp">0 / 100 XP</div></div><div class="skynix-xp-track"><div class="skynix-xp-fill" id="skynixXpFill" style="width:0%"></div></div><div class="skynix-badge-list" id="skynixBadgeList"></div></div><script id="skynix-onboarding-logic">
+(function(){
+  const trText=(tr,en)=>((window.currentLang||localStorage.getItem('appLang')||'en')==='tr'?tr:en);
+  const wizard=document.getElementById('skynixOnboarding'); if(!wizard) return;
+  let step=1, lolFound=false;
+  const pages=[...wizard.querySelectorAll('.skynix-wizard-page')], next=document.getElementById('wizNext'), back=document.getElementById('wizBack'), progress=document.getElementById('skynixWizardProgress'), stepEl=document.getElementById('skynixWizardStep');
+  function showStep(n){ step=Math.max(1,Math.min(5,n)); pages.forEach(p=>p.classList.toggle('active',Number(p.dataset.step)===step)); if(progress) progress.style.width=(step*20)+'%'; if(stepEl) stepEl.textContent=step+' / 5'; if(back) back.style.visibility=step===1?'hidden':'visible'; if(next) next.textContent=step===5?trText('Uygulamaya Başla','Start using Skynix'):trText('İleri','Next'); if(step===2) detectLol(); }
+  function detectLol(){ const status=document.getElementById('wizLolStatus'), pathEl=document.getElementById('wizLolPath'), icon=document.getElementById('wizLolIcon'); if(!status)return; status.textContent=trText('Taranıyor…','Scanning…'); pathEl.textContent=trText('League of Legends.exe aranıyor','Looking for League of Legends.exe'); icon.textContent='…'; Promise.resolve(window.electronAPI?.autoDetectLol?.()).then(p=>{ if(p){lolFound=true; localStorage.setItem('lolExePath',p); status.textContent=trText('LoL kurulumu tespit edildi','League of Legends installation found'); pathEl.textContent=p; icon.textContent='✓'; icon.style.color='#4ade80';} else {status.textContent=trText('Kurulum otomatik bulunamadı','Installation not found automatically'); pathEl.textContent=trText('Manuel seç ile League of Legends.exe dosyasını seçebilirsin.','Use Select manually to choose League of Legends.exe.'); icon.textContent='!'; icon.style.color='#fbbf24';} }).catch(()=>{status.textContent=trText('Otomatik tarama başarısız','Automatic scan failed');pathEl.textContent=trText('Manuel seç ile devam edebilirsin.','You can continue with manual selection.');icon.textContent='!';}); }
+  function updateWizardLanguage(){
+    const tr=(localStorage.getItem('appLang')||'en')==='tr';
+    window.currentLang=tr?'tr':'en';
+    const set=(id,a,b)=>{const e=document.getElementById(id);if(e)e.textContent=tr?a:b;};
+    set('skynixWizardSub','Kurulum sihirbazı','Setup wizard');
+    set('wizLangTitle','Dilini seç','Choose your language');set('wizLangSub','Skynix Manager deneyimini hangi dilde kullanmak istersin?','Which language would you like to use in Skynix Manager?');
+    set('wizLolTitle','LoL kurulumunu bul','Find your LoL installation');set('wizLolSub','League of Legends.exe otomatik olarak aranıyor.','League of Legends.exe is being detected automatically.');set('wizLolManual','Manuel seç','Select manually');
+    set('wizThemeTitle','Temanı seç','Choose your theme');set('wizThemeSub','Temalar arasından seçim yap; arayüz anında güncellensin.','Choose a theme and update the interface instantly.');
+    set('wizGuideTitle','Skynix’i keşfet','Discover Skynix');set('wizGuideSub','İlk skinini ekle, favorini seç ve oyuna hazırla.','Add your first skin, choose a favorite and get ready to play.');set('wizGuide1Title','Kütüphaneni oluştur','Build your library');set('wizGuide1Text','Fantome dosyasını sürükle-bırak veya mağazadan indir.','Drag and drop a Fantome file or download one from the store.');set('wizGuide2Title','Kuyruğunu hazırla','Prepare your queue');set('wizGuide2Text','Kalp ve yıldız ile skinlerini favorile, sonra kuyruğa ekle.','Favorite skins with the heart or star, then add them to the queue.');set('wizGuide3Title','Tek tıkla çalıştır','Launch with one click');set('wizGuide3Text','Skinlerini başlat ve oyuna geç.','Start your skins and jump into the game.');
+    set('wizFinalTitle',"SKYNIX MANAGER'A HOŞ GELDİN!",'WELCOME TO SKYNIX MANAGER!');set('wizFinalText','Oyun deneyimini baştan yaratmaya hazır ol.','Your new game experience starts now.');set('wizBack','Geri','Back');set('wizNext',step===5?'Uygulamaya Başla':'İleri',step===5?'Start using Skynix':'Next');
+  }
+  function selectTheme(id){ wizard.querySelectorAll('[data-theme]').forEach(x=>x.classList.toggle('selected',x.dataset.theme===id)); const map={cyan:'cyan',purple:'purple',blood:'crimson',emerald:'emerald'}; try{ if(typeof applyPresetTheme==='function') applyPresetTheme(map[id]||id); }catch(_){} localStorage.setItem('onboardingTheme',map[id]||id); }
+  function renderWizardThemes(){
+    const box=document.getElementById('skynixWizardThemes'); if(!box) return;
+    let themes=[]; try{ themes=Array.isArray(presetThemes)?presetThemes:[]; }catch(_){ themes=[]; }
+    if(!themes.length){ box.innerHTML='<p class="skynix-muted">Tema seçenekleri yüklenemedi.</p>'; return; }
+    box.innerHTML=themes.map(t=>`<button type="button" class="skynix-choice" data-theme="${String(t.id).replace(/"/g,'&quot;')}" aria-label="${String(t.name||t.id).replace(/"/g,'&quot;')}"><div class="skynix-theme-swatch" style="background:linear-gradient(135deg,${t.bg||'#182033'},${t.accent||'#7c5cff'})"></div><strong>${t.name||t.id}</strong><small>${t.description||''}</small></button>`).join('');
+    box.querySelectorAll('[data-theme]').forEach(btn=>btn.addEventListener('click',()=>selectTheme(btn.dataset.theme)));
+  }
+  wizard.querySelectorAll('[data-lang]').forEach(btn=>btn.addEventListener('click',()=>{ localStorage.setItem('appLang',btn.dataset.lang); wizard.querySelectorAll('[data-lang]').forEach(x=>x.classList.toggle('selected',x===btn)); if(typeof applyLanguage==='function') try{applyLanguage(btn.dataset.lang)}catch(_){} updateWizardLanguage(); }));
+  wizard.querySelectorAll('[data-theme]').forEach(btn=>btn.addEventListener('click',()=>selectTheme(btn.dataset.theme)));
+  document.getElementById('wizLolManual')?.addEventListener('click',async()=>{try{const p=await window.electronAPI?.selectLolExe?.();if(p){lolFound=true;localStorage.setItem('lolExePath',p);document.getElementById('wizLolStatus').textContent=trText('LoL yolu seçildi','LoL path selected');document.getElementById('wizLolPath').textContent=p;document.getElementById('wizLolIcon').textContent='✓';}}catch(_){} });
+  next?.addEventListener('click',()=>{if(step===5){localStorage.setItem('onboardingComplete','true');wizard.classList.remove('show');wizard.setAttribute('aria-hidden','true');if(typeof switchTab==='function') switchTab('home',document.querySelector('.nav-item'));if(typeof showToast==='function')showToast(trText('Kurulum tamamlandı. Hoş geldin!','Setup complete. Welcome!'));if(typeof renderSkynixBadges==='function')renderSkynixBadges();return;}showStep(step+1);});
+  back?.addEventListener('click',()=>showStep(step-1));
+  function openWizard(){ if(localStorage.getItem('onboardingComplete')==='true')return; updateWizardLanguage(); wizard.classList.add('show');wizard.setAttribute('aria-hidden','false');showStep(1); }
+  window.openSkynixOnboarding=openWizard;
+  function badgeIcon(type){const paths={fix:'<path d="m14.5 4.5 5 5M13 6l-3-3-7 7 3 3 7-7ZM4 13l7 7 3-3-7-7M14 14l6 6"/>',collection:'<path d="M4 5h16v14H4zM8 5V3h8v2M8 10h8M8 14h5"/>',early:'<path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/>',verified:'<path d="M12 3 20 6v5c0 5-3.4 8.1-8 10-4.6-1.9-8-5-8-10V6l8-3Z"/><path d="m8 12 2.5 2.5L16 9"/>'};return '<svg viewBox="0 0 24 24">'+paths[type]+'</svg>';}
+  window.renderSkynixBadges=function(){const card=document.getElementById('skynixBadgesCard'),body=document.querySelector('#profile-panel .profile-page-body');if(!card||!body)return;if(!body.contains(card))body.appendChild(card);card.style.display='block';const skins=JSON.parse(localStorage.getItem('customSkinsList')||'[]');const usage=JSON.parse(localStorage.getItem('skinUsageCounts')||'{}');const used=Object.values(usage).reduce((a,b)=>a+Number(b||0),0);const xp=Math.min(9999,skins.length*20+used*5+(localStorage.getItem('onboardingComplete')==='true'?25:0));const level=Math.max(1,Math.floor(xp/100)+1),base=(level-1)*100,inside=xp-base;const names=level>=10?trText('Skynix Efendisi','Skynix Master'):level>=5?trText('Mod Koleksiyoneri','Mod Collector'):trText('Acemi','Beginner');document.getElementById('skynixLevelName').textContent='Lv. '+level+' '+names;document.getElementById('skynixLevelXp').textContent=xp+' / '+(base+100)+' XP';document.getElementById('skynixXpFill').style.width=Math.min(100,inside)+'%';const earned={fix:localStorage.getItem('skyfixerCompleted')==='true'||localStorage.getItem('skyfixerUsed')==='true',collection:skins.length>=5,early:localStorage.getItem('onboardingComplete')==='true',verified:localStorage.getItem('discordUser')||localStorage.getItem('discord_user')};const labels={fix:trText('Skyfixer Ustası','Skyfixer Master'),collection:trText('Mod Koleksiyoneri','Mod Collector'),early:trText('Erken Katılımcı','Early Adopter'),verified:trText('Doğrulanmış Üye','Verified Member')};const colors={fix:'#38bdf8',collection:'#f59e0b',early:'#a78bfa',verified:'#4ade80'};document.getElementById('skynixBadgeList').innerHTML=Object.keys(labels).map(k=>'<div class="skynix-badge '+(earned[k]?'earned':'')+'" style="--badge-color:'+colors[k]+'"><div class="skynix-badge-mark">'+badgeIcon(k)+'</div><div><span>'+labels[k]+'</span><small>'+ (earned[k]?trText('Kazanıldı','Earned'):trText('Kilitli','Locked'))+'</small></div></div>').join('');};
+  if(typeof updateProfileUI==='function'){const original=updateProfileUI;window.updateProfileUI=function(){original.apply(this,arguments);window.renderSkynixBadges();};}
+  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{renderWizardThemes();window.renderSkynixBadges();openWizard();},80);});
+})();
+</script><style id="skynix-leaderboard-styles">
+#leaderboard-panel{padding:28px;overflow:auto}.skynix-leaderboard-wrap{max-width:980px;margin:0 auto}.skynix-leaderboard-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:22px}.skynix-leaderboard-head h1{margin:0;color:var(--text-main);font-size:28px}.skynix-leaderboard-head p{margin:6px 0 0;color:var(--text-muted);font-size:13px}.skynix-leaderboard-list{display:grid;gap:10px}.skynix-rank-row{display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:14px;padding:14px 18px;border:1px solid var(--border-color);border-radius:14px;background:var(--card-bg);transition:border-color .2s}.skynix-rank-row:hover{border-color:var(--accent-color)}.skynix-rank-no{font-size:19px;font-weight:900;color:var(--accent-color);text-align:center}.skynix-rank-user{display:flex;align-items:center;gap:12px;min-width:0}.skynix-rank-user img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--accent-color)}.skynix-rank-user strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-main)}.skynix-rank-user small{color:var(--text-muted)}.skynix-rank-time{font-weight:900;color:var(--text-main);white-space:nowrap}.skynix-rank-empty{padding:36px;text-align:center;color:var(--text-muted);border:1px dashed var(--border-color);border-radius:14px}.skynix-rank-refresh{border:1px solid var(--accent-color);background:transparent;color:var(--text-main);border-radius:9px;padding:9px 14px;cursor:pointer}
+</style>
+<style id="skynix-leaderboard-modern">
+#leaderboard-panel{padding:clamp(24px,4vw,56px);background:linear-gradient(145deg,rgba(9,13,28,.32),rgba(6,8,18,.08))}
+#leaderboard-panel .skynix-leaderboard-wrap{max-width:1040px;padding:28px 30px 34px;border:1px solid color-mix(in srgb,var(--accent-color) 32%,transparent);border-radius:24px;background:color-mix(in srgb,var(--card-bg) 84%,transparent);box-shadow:0 24px 70px rgba(0,0,0,.25),inset 0 1px rgba(255,255,255,.06);backdrop-filter:blur(14px)}
+#leaderboard-panel .skynix-leaderboard-head{padding-bottom:20px;border-bottom:1px solid color-mix(in srgb,var(--accent-color) 22%,transparent)}
+#leaderboard-panel .skynix-leaderboard-head h1{font-size:clamp(25px,3vw,34px);letter-spacing:-.5px}
+#leaderboard-panel .skynix-rank-row{border-radius:16px;background:linear-gradient(100deg,color-mix(in srgb,var(--card-bg) 92%,transparent),color-mix(in srgb,var(--accent-color) 5%,transparent));box-shadow:0 8px 24px rgba(0,0,0,.12)}
+#leaderboard-panel .skynix-rank-row:first-child{border-color:var(--accent-color);box-shadow:0 0 22px color-mix(in srgb,var(--accent-color) 25%,transparent)}
+#skynix-community-box .sidebar-box-header .icon-svg{filter:drop-shadow(0 0 6px var(--accent-color))}
+#skynix-community-box #nav-leaderboard .icon-svg{color:var(--accent-color);filter:drop-shadow(0 0 5px var(--accent-color))}
+</style><script id="skynix-leaderboard-client">
+(function(){
+  const API='https://skynix-leaderboard.onrender.com'; let lolRunning=false, pendingMinutes=0;
+  const userData=()=>{try{const id=localStorage.getItem('skynix_current_user');const users=typeof getUsers==='function'?getUsers():[];const u=users.find(x=>x.id===id)||{};return {discordId:u.discordId||u.id,username:u.username||u.discordUsername,avatar:u.avatar||''};}catch(_){return {};}};
+  const fmt=m=>{m=Number(m)||0;return Math.floor(m/60)+' sa '+String(m%60).padStart(2,'0')+' dk';};
+  async function sync(){const u=userData();if(!u.discordId||!u.username||pendingMinutes<1)return;const minutes=Math.min(5,pendingMinutes);pendingMinutes=0;try{await fetch(API+'/leaderboard/heartbeat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discordId:u.discordId,username:u.username,avatar:u.avatar,minutes})});}catch(_){pendingMinutes+=minutes;}}
+  async function registerCurrentUser(){const u=userData();if(!u.discordId||!u.username)return;try{await fetch(API+'/leaderboard/heartbeat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discordId:u.discordId,username:u.username,avatar:u.avatar,minutes:0})});}catch(_){} }
+  async function load(){const box=document.getElementById('skynixLeaderboardList');if(!box)return;await sync();box.innerHTML='<div class="skynix-rank-empty">Sıralama yükleniyor...</div>';await registerCurrentUser();try{const r=await fetch(API+'/leaderboard/monthly',{cache:'no-store'});const d=await r.json();if(d.success&&d.users?.length){const me=userData();localStorage.setItem("leaderboardRank1",String(d.users[0]?.discordId===me.discordId));if(typeof window.renderSkynixBadges==='function')window.renderSkynixBadges();}if(!d.success||!d.users?.length){box.innerHTML='<div class="skynix-rank-empty">Bu ay için henüz süre kaydı yok.</div>';return;}box.innerHTML=d.users.map((u,i)=>`<div class="skynix-rank-row"><div class="skynix-rank-no">${i+1}</div>${i===0?'<span class="skynix-rank-badge">AY LİDERİ</span>':''}<div class="skynix-rank-user"><img src="${u.avatar||'https://cdn.discordapp.com/embed/avatars/0.png'}" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'"><div><strong>${String(u.username||'Discord kullanıcısı').replace(/[<>&]/g,'')}</strong><small>Discord</small></div></div><div class="skynix-rank-time">${fmt(u.minutes)}</div></div>`).join('');}catch(_){box.innerHTML='<div class="skynix-rank-empty">Sıralama servisine şu anda ulaşılamıyor.</div>';}}
+    function updateLeaderboardLanguage(){const tr=(window.currentLang||localStorage.getItem('appLang')||'en')==='tr';const n=document.querySelector('#skynix-community-box span');if(n)n.textContent=tr?'TOPLULUK':'COMMUNITY';const item=document.querySelector('#nav-leaderboard span');if(item)item.textContent=tr?'Sıralama':'Leaderboard';const title=document.querySelector('#leaderboard-panel h1');if(title)title.textContent=tr?'Aylık Sıralama':'Monthly Leaderboard';const sub=document.querySelector('#leaderboard-panel .skynix-leaderboard-head p');if(sub)sub.textContent=tr?'Bu ay LoL ve Skynix Manager’da geçirilen toplam süre':'Total time spent in LoL and Skynix Manager this month';const btn=document.querySelector('#leaderboard-panel .skynix-rank-refresh');if(btn)btn.textContent=tr?'Yenile':'Refresh';}  function install(){
+    const side=document.querySelector('.sidebar');
+    if(side&&!document.getElementById('skynix-community-box')){const box=document.createElement('div');box.id='skynix-community-box';box.className='sidebar-window-box';box.innerHTML='<div class="sidebar-box-header"><svg class="icon-svg icon-sm" viewBox="0 0 24 24" style="color:var(--accent-color);"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-6a3 3 0 0 1 0 6m4 10v-2a4 4 0 0 0-3-3.87"/></svg><span>TOPLULUK</span></div><div class="sidebar-box-body"><div class="nav-item" id="nav-leaderboard" onclick="switchTab(&quot;leaderboard&quot;, this)"><svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V10m7 10V4m7 16v-7M3 20h18"/></svg><span>Sıralama</span></div></div>';const version=side.querySelector('#appVersionLabel');if(version)side.insertBefore(box,version);else side.appendChild(box);}
+    const area=document.querySelector('.content-area');if(area&&!document.getElementById('leaderboard-panel')){const p=document.createElement('div');p.id='leaderboard-panel';p.className='panel';p.innerHTML='<div class="skynix-leaderboard-wrap"><div class="skynix-leaderboard-head"><div><h1>Aylık Sıralama</h1><p>Bu ay LoL ve Skynix Manager’da geçirilen toplam süre</p></div><button class="skynix-rank-refresh" type="button">Yenile</button></div><div id="skynixLeaderboardList" class="skynix-leaderboard-list"></div></div>';area.appendChild(p);p.querySelector('button').addEventListener('click',load);load();}
+  }  if(window.electronAPI?.onLolStatusChange)window.electronAPI.onLolStatusChange(v=>{lolRunning=Boolean(v);});
+  setInterval(()=>{if(lolRunning){pendingMinutes++;if(pendingMinutes>=1)sync();}},60000);
+  setInterval(()=>{const panel=document.getElementById('leaderboard-panel');if(panel&&panel.classList.contains('active')&&document.visibilityState==='visible')load();},60000);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)sync();});
+  const _skynixApplyLanguage=window.applyLanguage;if(typeof _skynixApplyLanguage==='function'&&!_skynixApplyLanguage.__skynixWrapped){const _wrappedLanguage=function(lang){const result=_skynixApplyLanguage.apply(this,arguments);updateLeaderboardLanguage();return result;};_wrappedLanguage.__skynixWrapped=true;window.applyLanguage=_wrappedLanguage;}  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>{install();updateLeaderboardLanguage();},120);}); window.loadSkynixLeaderboard=load;
+})();
+</script><script id="skynix-skyfixer-disabled-guard">
+(function(){function disable(){document.querySelectorAll('[onclick*="runSkinFixerAction"],[onclick*="openSkyfixer"]').forEach(el=>{el.style.display='none';el.setAttribute('aria-disabled','true');el.onclick=e=>{e.preventDefault();e.stopPropagation();return false;};});const modal=document.getElementById('skyfixerModal');if(modal){modal.style.display='none';modal.setAttribute('aria-hidden','true');}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',disable,{once:true});else disable();})();
+</script><script id="skynix-badges-enhancement-script">
+(function(){
+ function enhanceBadges(){const tr=(window.currentLang||localStorage.getItem('appLang')||'en')==='tr';const used=Object.values(JSON.parse(localStorage.getItem('skinUsageCounts')||'{}')).reduce((a,b)=>a+Number(b||0),0);const skins=JSON.parse(localStorage.getItem('customSkinsList')||'[]');const earned=[];if(used>=1)earned.push({label:tr?'İlk Aktivasyon':'First Activation',mark:'1'});if(used>=10)earned.push({label:tr?'Aktif Oyuncu':'Active Player',mark:'A'});if(skins.length>=5)earned.push({label:tr?'Mod Koleksiyoneri':'Mod Collector',mark:'M'});if(localStorage.getItem('leaderboardRank1')==='true')earned.push({label:tr?'Ay Lideri':'Monthly Leader',mark:'★',gold:true});const list=document.getElementById('skynixBadgeList');if(list&&!list.querySelector('[data-enhanced-badges]')){const extra=earned.map(b=>'<div class="skynix-badge earned" data-enhanced-badges="1"><div class="skynix-badge-mark"><span style="font-size:12px;font-weight:900">'+b.mark+'</span></div><div><span>'+b.label+'</span><small>Kazanıldı</small></div></div>').join('');list.insertAdjacentHTML('beforeend',extra);}let wrap=document.getElementById('skynixTopBadges');if(!wrap){const name=document.getElementById('navProfileName');if(!name)return;wrap=document.createElement('span');wrap.id='skynixTopBadges';wrap.className='skynix-top-badges';name.insertAdjacentElement('afterend',wrap);}wrap.innerHTML=earned.filter(b=>b.gold).map(b=>`<span class="skynix-top-badge ${b.gold?'gold':''}" title="${b.label}">${b.mark}</span>`).join('');}
+ const old=window.renderSkynixBadges;if(typeof old==='function'){window.renderSkynixBadges=function(){old.apply(this,arguments);enhanceBadges();};}
+ document.addEventListener('DOMContentLoaded',()=>setTimeout(enhanceBadges,180));
+})();
+</script><script id="skynix-profile-name-badges">
+(function(){
+  function render(){
+    const name=document.getElementById('profilePageName');
+    if(!name)return;
+    let wrap=document.getElementById('skynixProfileBadges');
+    if(!wrap){wrap=document.createElement('span');wrap.id='skynixProfileBadges';wrap.className='skynix-top-badges';wrap.setAttribute('aria-label','Profile badges');name.appendChild(wrap);}
+    const tr=(window.currentLang||localStorage.getItem('appLang')||'en')==='tr';
+    const usage=JSON.parse(localStorage.getItem('skinUsageCounts')||'{}');
+    const used=Object.values(usage).reduce((a,b)=>a+Number(b||0),0);
+    const skins=JSON.parse(localStorage.getItem('customSkinsList')||'[]');
+    const badges=[];
+    if(used>=1)badges.push({label:tr?'İlk Aktivasyon':'First Activation',mark:'1'});
+    if(used>=10)badges.push({label:tr?'Aktif Oyuncu':'Active Player',mark:'A'});
+    if(skins.length>=5)badges.push({label:tr?'Mod Koleksiyoneri':'Mod Collector',mark:'M'});
+    if(localStorage.getItem('leaderboardRank1')==='true')badges.push({label:tr?'Ay Lideri':'Monthly Leader',mark:'★',gold:true});
+    wrap.innerHTML=badges.filter(b=>b.gold).map(b=>'<span class="skynix-top-badge '+(b.gold?'gold':'')+'" title="'+b.label+'">'+b.mark+'</span>').join('');
+  }
+  const old=window.renderSkynixBadges;
+  if(typeof old==='function'&&!old.__profileNameBadges){
+    const wrapped=function(){old.apply(this,arguments);render();}; wrapped.__profileNameBadges=true; window.renderSkynixBadges=wrapped;
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(render,220));
+  window.renderProfileNameBadges=render;
+})();
+</script><script id="skynix-performance-guard">(function(){function update(){if(document.body)document.body.classList.toggle('skynix-page-hidden',document.hidden)}document.addEventListener('visibilitychange',update);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',update,{once:true});else update();})();</script><script id="skynix-image-performance">
+(function(){
+  function optimize(root){(root||document).querySelectorAll('img').forEach(function(img){if(img.id==='mainAppBackground'||img.classList.contains('profile-page-avatar')||img.classList.contains('profile-avatar-sm'))return;if(!img.loading)img.loading='lazy';if(!img.decoding)img.decoding='async';if(!img.fetchPriority)img.fetchPriority='low';});}
+  function boot(){optimize(document);let timer=0;const observer=new MutationObserver(function(records){clearTimeout(timer);timer=setTimeout(function(){records.forEach(function(record){record.addedNodes.forEach(function(node){if(node.nodeType===1)optimize(node)})})},300)});observer.observe(document.body,{childList:true,subtree:true});}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 </script></body>
 </html>
