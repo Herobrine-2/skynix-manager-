@@ -45,7 +45,7 @@ function json(res,status,data){
 function body(req){
   return new Promise((resolve,reject)=>{
     let s='';
-    // 10MB limit (Hareketli GIF ve büyük bannerlar için)
+    // 10MB limit to easily handle custom animated GIF/PNG banners
     req.on('data',c=>{
       s+=c;
       if(s.length > 10 * 1024 * 1024) req.destroy();
@@ -64,7 +64,7 @@ const server = http.createServer(async(req,res)=>{
     if(req.url==='/health') return json(res,200,{ok:true,service:'skynix-leaderboard'});
     if(!pool) return json(res,503,{success:false,error:'DATABASE_URL yapılandırılmadı'});
 
-    // Yüklenen özel bannerları (GIF/PNG) servis et
+    // Serve hosted user banners (GIF, PNG, JPEG) - NO CACHE to ensure immediate updates
     if(req.method==='GET' && req.url.startsWith('/leaderboard/banner/')){
       const discordId = req.url.split('/')[3]?.split('?')[0];
       if(!discordId) return res.writeHead(400).end('discordId missing');
@@ -78,7 +78,9 @@ const server = http.createServer(async(req,res)=>{
       res.writeHead(200, {
         'Content-Type': row.content_type || 'image/png',
         'Content-Length': imgBuf.length,
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         'Access-Control-Allow-Origin': '*'
       });
       return res.end(imgBuf);
@@ -95,22 +97,25 @@ const server = http.createServer(async(req,res)=>{
       const topScore = Math.max(0, Math.floor(Number(x.topScore) || 0));
       const customTitle = typeof x.customTitle === 'string' && x.customTitle.trim().length > 0 ? x.customTitle.trim().slice(0, 100) : null;
 
-      // Kullanıcı bilgisayarından base64 görsel veya GIF yüklediyse:
+      // If user uploaded a local image / animated GIF data URL:
       if (banner && banner.startsWith('data:image/')) {
         try {
           const m = banner.match(/^data:([^;]+);base64,(.+)$/);
           if (m) {
             const contentType = m[1];
             const dataBase64 = m[2];
-            await pool.query(`
+            const bannerUpdateResult = await pool.query(`
               INSERT INTO user_banners(discord_id, content_type, data_base64, updated_at)
               VALUES($1, $2, $3, NOW())
               ON CONFLICT(discord_id) DO UPDATE SET
                 content_type = EXCLUDED.content_type,
                 data_base64 = EXCLUDED.data_base64,
                 updated_at = NOW()
+              RETURNING EXTRACT(EPOCH FROM updated_at)::BIGINT AS ts
             `, [String(x.discordId), contentType, dataBase64]);
-            banner = `https://skynix-leaderboard.onrender.com/leaderboard/banner/${x.discordId}`;
+            const ts = bannerUpdateResult.rows[0]?.ts || Date.now();
+            // Convert to lightweight public URL with timestamp cache-buster
+            banner = `https://skynix-leaderboard.onrender.com/leaderboard/banner/${x.discordId}?t=${ts}`;
           }
         } catch(err) {
           console.error('Banner upload error:', err);
@@ -152,19 +157,24 @@ const server = http.createServer(async(req,res)=>{
     if(req.method==='GET' && req.url==='/leaderboard/monthly'){
       const q = await pool.query(`
         SELECT 
-          discord_id AS "discordId",
-          username,
-          avatar,
-          minutes,
-          banner,
-          level,
-          xp,
-          top_champ AS "topChamp",
-          top_score AS "topScore",
-          custom_title AS "customTitle"
-        FROM leaderboard_users 
-        WHERE month_key = $1 
-        ORDER BY minutes DESC, updated_at ASC 
+          u.discord_id AS "discordId",
+          u.username,
+          u.avatar,
+          u.minutes,
+          CASE 
+            WHEN b.discord_id IS NOT NULL THEN 'https://skynix-leaderboard.onrender.com/leaderboard/banner/' || u.discord_id || '?t=' || EXTRACT(EPOCH FROM b.updated_at)::BIGINT
+            WHEN u.banner IS NOT NULL AND u.banner LIKE '%/leaderboard/banner/%' THEN u.banner || CASE WHEN u.banner LIKE '%?%' THEN '&t=' ELSE '?t=' END || EXTRACT(EPOCH FROM u.updated_at)::BIGINT
+            ELSE u.banner 
+          END AS banner,
+          u.level,
+          u.xp,
+          u.top_champ AS "topChamp",
+          u.top_score AS "topScore",
+          u.custom_title AS "customTitle"
+        FROM leaderboard_users u
+        LEFT JOIN user_banners b ON b.discord_id = u.discord_id
+        WHERE u.month_key = $1 
+        ORDER BY u.minutes DESC, u.updated_at ASC 
         LIMIT 100
       `, [monthKey()]);
       return json(res, 200, { success: true, month: monthKey(), users: q.rows });
