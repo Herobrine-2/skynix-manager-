@@ -22,6 +22,13 @@ async function init(){
     ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS top_champ TEXT;
     ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS top_score INTEGER DEFAULT 0;
     ALTER TABLE leaderboard_users ADD COLUMN IF NOT EXISTS custom_title TEXT;
+
+    CREATE TABLE IF NOT EXISTS user_banners (
+      discord_id TEXT PRIMARY KEY,
+      content_type TEXT NOT NULL,
+      data_base64 TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
 }
 
@@ -38,8 +45,15 @@ function json(res,status,data){
 function body(req){
   return new Promise((resolve,reject)=>{
     let s='';
-    req.on('data',c=>{s+=c;if(s.length>25000)req.destroy();});
-    req.on('end',()=>{try{resolve(JSON.parse(s||'{}'));}catch(e){reject(e);}});
+    // 10MB limit (Hareketli GIF ve büyük bannerlar için)
+    req.on('data',c=>{
+      s+=c;
+      if(s.length > 10 * 1024 * 1024) req.destroy();
+    });
+    req.on('end',()=>{
+      try{resolve(JSON.parse(s||'{}'));}
+      catch(e){reject(e);}
+    });
     req.on('error',reject);
   });
 }
@@ -50,16 +64,58 @@ const server = http.createServer(async(req,res)=>{
     if(req.url==='/health') return json(res,200,{ok:true,service:'skynix-leaderboard'});
     if(!pool) return json(res,503,{success:false,error:'DATABASE_URL yapılandırılmadı'});
 
+    // Yüklenen özel bannerları (GIF/PNG) servis et
+    if(req.method==='GET' && req.url.startsWith('/leaderboard/banner/')){
+      const discordId = req.url.split('/')[3]?.split('?')[0];
+      if(!discordId) return res.writeHead(400).end('discordId missing');
+      const q = await pool.query('SELECT content_type, data_base64 FROM user_banners WHERE discord_id = $1', [String(discordId)]);
+      if(q.rows.length === 0){
+        res.writeHead(404, { 'Access-Control-Allow-Origin': '*' });
+        return res.end('Banner not found');
+      }
+      const row = q.rows[0];
+      const imgBuf = Buffer.from(row.data_base64, 'base64');
+      res.writeHead(200, {
+        'Content-Type': row.content_type || 'image/png',
+        'Content-Length': imgBuf.length,
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*'
+      });
+      return res.end(imgBuf);
+    }
+
     if(req.method==='POST' && req.url==='/leaderboard/heartbeat'){
       const x = await body(req);
       if(!x.discordId || !x.username) return json(res,400,{success:false,error:'discordId ve username gerekli'});
       const minutes = Math.max(0, Math.min(5, Math.floor(Number(x.minutes)||0)));
-      const banner = typeof x.banner === 'string' && x.banner.length > 5 ? x.banner.slice(0, 1000) : null;
+      let banner = typeof x.banner === 'string' && x.banner.length > 5 ? x.banner : null;
       const level = Math.max(1, Math.min(9999, Math.floor(Number(x.level) || 1)));
       const xp = Math.max(0, Math.floor(Number(x.xp) || 0));
       const topChamp = typeof x.topChamp === 'string' && x.topChamp.trim().length > 0 ? x.topChamp.trim().slice(0, 80) : null;
       const topScore = Math.max(0, Math.floor(Number(x.topScore) || 0));
       const customTitle = typeof x.customTitle === 'string' && x.customTitle.trim().length > 0 ? x.customTitle.trim().slice(0, 100) : null;
+
+      // Kullanıcı bilgisayarından base64 görsel veya GIF yüklediyse:
+      if (banner && banner.startsWith('data:image/')) {
+        try {
+          const m = banner.match(/^data:([^;]+);base64,(.+)$/);
+          if (m) {
+            const contentType = m[1];
+            const dataBase64 = m[2];
+            await pool.query(`
+              INSERT INTO user_banners(discord_id, content_type, data_base64, updated_at)
+              VALUES($1, $2, $3, NOW())
+              ON CONFLICT(discord_id) DO UPDATE SET
+                content_type = EXCLUDED.content_type,
+                data_base64 = EXCLUDED.data_base64,
+                updated_at = NOW()
+            `, [String(x.discordId), contentType, dataBase64]);
+            banner = `https://skynix-leaderboard.onrender.com/leaderboard/banner/${x.discordId}`;
+          }
+        } catch(err) {
+          console.error('Banner upload error:', err);
+        }
+      }
 
       await pool.query(`
         INSERT INTO leaderboard_users(
@@ -90,7 +146,7 @@ const server = http.createServer(async(req,res)=>{
         topScore,
         customTitle
       ]);
-      return json(res, 200, { success: true });
+      return json(res, 200, { success: true, bannerUrl: banner });
     }
 
     if(req.method==='GET' && req.url==='/leaderboard/monthly'){
